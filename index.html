@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B4F47">
+<title>gsstock — godown stock entries from your phone</title>
+<meta name="description" content="gsstock lets godown staff record stock in, stock out and transport (LR) entries from a phone in seconds. Stock is counted in Bag, Mini and Loose and kept in your Google Sheet.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --door:#0B4F47;      /* godown door green */
+    --door-2:#13675D;
+    --cement:#E7EAE6;    /* floor */
+    --paper:#F7F8F6;
+    --kraft:#B98D52;     /* jute / kraft bag */
+    --kraft-soft:#EADBC3;
+    --ink:#16231F;
+    --muted:#55635F;
+    --lr:#E07A1F;        /* transport orange */
+    --line:#CBD2CD;
+    --stencil:"Big Shoulders Stencil Display", Impact, "Arial Narrow", sans-serif;
+    --sans:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--cement);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55}
+  a{color:inherit}
+  :focus-visible{outline:3px solid var(--lr);outline-offset:3px;border-radius:6px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+  .mark{font-family:var(--stencil);font-weight:800;font-size:34px;letter-spacing:.04em;line-height:1;color:var(--door);text-decoration:none}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;font:600 16px/1 var(--sans);
+       padding:15px 22px;text-decoration:none;cursor:pointer}
+  .btn.main{background:var(--door);color:#fff}
+  .btn.main:hover{background:var(--door-2)}
+  .btn.plain{background:transparent;color:var(--door);padding:15px 4px}
+  .btn.plain:hover{text-decoration:underline}
+  .top .btn{padding:11px 16px;font-size:15px}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:36px 0 72px}
+  .stamp{font-family:var(--stencil);font-weight:800;color:var(--door);font-size:clamp(76px,13vw,150px);line-height:.82;letter-spacing:.02em;margin:0 0 22px;
+         text-transform:uppercase;transform:rotate(-2deg);transform-origin:left bottom}
+  .stamp span{display:block;color:var(--kraft);font-size:.42em;letter-spacing:.03em;margin-top:10px;transform:rotate(1deg);text-transform:none}
+  h1{font-size:clamp(26px,3.4vw,36px);line-height:1.2;font-weight:700;margin:0 0 14px;max-width:20ch}
+  .lead{color:var(--muted);max-width:46ch;margin:0 0 28px}
+  .ctas{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+
+  /* phone demo */
+  .phone{justify-self:center;width:300px;background:#0f1b18;border-radius:40px;padding:12px;box-shadow:0 30px 60px -30px rgba(11,79,71,.55)}
+  .screen{background:#ECE5DD;border-radius:30px;overflow:hidden;height:560px;display:flex;flex-direction:column;font-size:14px}
+  .s-hdr{background:#075E54;color:#fff;padding:16px 14px 0}
+  .s-hdr b{font-family:var(--stencil);font-size:20px;letter-spacing:.04em}
+  .s-tabs{display:grid;grid-template-columns:repeat(4,1fr);font-size:11px;font-weight:700;margin-top:10px}
+  .s-tabs span{padding:8px 0;text-align:center;opacity:.7;border-bottom:3px solid transparent}
+  .s-tabs span.on{opacity:1;border-color:#fff}
+  .s-body{padding:12px;flex:1}
+  .s-input{background:#fff;border:1.5px solid #128C7E;border-radius:22px;padding:11px 14px;font-size:15px;min-height:44px}
+  .s-input .ph{color:#98a3a0}
+  .caret{display:inline-block;width:2px;height:18px;background:#075E54;vertical-align:-3px;margin-left:1px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .s-res{background:#fff;border-radius:12px;margin-top:8px;padding:10px;opacity:0;transform:translateY(-4px);transition:opacity .25s,transform .25s}
+  .s-res.show{opacity:1;transform:none}
+  .s-res .nm{font-weight:600;font-size:15px;margin-bottom:8px;display:flex;justify-content:space-between}
+  .s-res .nm small{color:#8a9592;font-weight:400}
+  .s-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .s-btns span{background:#075E54;color:#fff;border-radius:9px;text-align:center;padding:10px 0;font-weight:700;font-size:13px;transition:transform .12s,background .12s}
+  .s-btns span.press{transform:scale(.93);background:#25D366}
+  .s-flash{text-align:center;margin-top:12px;opacity:0;transition:opacity .3s}
+  .s-flash.show{opacity:1}
+  .s-flash span{background:#dff2ec;color:#075E54;border-radius:14px;padding:6px 12px;font-size:13px;display:inline-block}
+  .s-list{background:#fff;border-radius:12px;margin-top:10px;padding:12px;display:flex;justify-content:space-between;font-weight:600;opacity:0;transition:opacity .3s}
+  .s-list.show{opacity:1}
+  .s-list em{font-style:normal;color:#128C7E;font-size:12px}
+  .s-save{margin:10px 12px 14px;background:#25D366;color:#fff;border-radius:24px;text-align:center;padding:13px;font-weight:700;opacity:.45;transition:opacity .3s}
+  .s-save.on{opacity:1}
+  .replay{display:block;margin:14px auto 0;background:none;border:0;color:var(--muted);font:500 14px var(--sans);cursor:pointer;text-decoration:underline}
+
+  /* sections */
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  h2{font-size:clamp(24px,3vw,30px);line-height:1.2;margin:0 0 10px;font-weight:700;max-width:28ch}
+  .sub{color:var(--muted);margin:0 0 32px;max-width:56ch}
+
+  .jobs{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 48px;margin:0;padding:0;list-style:none}
+  .jobs li{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:start}
+  .jobs .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--paper);border:1px solid var(--line)}
+  .jobs li.tr .ic{background:#FCEBDB;border-color:#F2C9A2}
+  .jobs b{display:block;font-size:18px;margin-bottom:2px}
+  .jobs p{margin:0;color:var(--muted)}
+
+  /* packing — the tally */
+  .pack{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+  .tally{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px}
+  .tally .row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .tally .row:last-of-type{border-bottom:0}
+  .bags{display:flex;gap:6px;flex-wrap:wrap;min-width:120px}
+  .bag{width:30px;height:36px;background:var(--kraft);border-radius:6px 6px 9px 9px;position:relative}
+  .bag::before{content:"";position:absolute;left:8px;right:8px;top:-5px;height:8px;background:var(--kraft);border-radius:3px;filter:brightness(.85)}
+  .bag.mini{width:20px;height:24px;background:#cfae7d;border-radius:5px 5px 7px 7px}
+  .bag.mini::before{left:5px;right:5px;top:-4px;height:6px;background:#cfae7d}
+  .pc{width:12px;height:12px;border-radius:50%;background:var(--door)}
+  .tally .what{flex:1}
+  .tally .what b{display:block}
+  .tally .what small{color:var(--muted)}
+  .tally .num{font-weight:700;font-variant-numeric:tabular-nums}
+  .tally .sum{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding-top:14px;border-top:2px solid var(--ink)}
+  .tally .sum b{font-family:var(--stencil);font-size:40px;line-height:1;color:var(--door);letter-spacing:.02em}
+
+  .sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--paper)}
+  .sheet div{padding:22px;border-right:1px solid var(--line)}
+  .sheet div:last-child{border-right:0}
+  .sheet b{display:block;margin-bottom:4px}
+  .sheet p{margin:0;color:var(--muted);font-size:16px}
+  .sheet .who{font-size:13px;font-weight:700;color:var(--door);margin-bottom:10px}
+
+  .end{background:var(--door);color:#fff;border-radius:24px;padding:48px 32px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between;margin:8px 0 48px}
+  .end .mark{color:#fff;font-size:46px}
+  .end p{margin:6px 0 0;opacity:.85;max-width:40ch}
+  .end .btn.main{background:#fff;color:var(--door)}
+  .end .btn.main:hover{background:var(--kraft-soft)}
+  footer{color:var(--muted);font-size:14px;padding:0 0 32px}
+
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;gap:36px;padding-top:16px}
+    .pack{grid-template-columns:1fr;gap:28px}
+    .jobs{grid-template-columns:1fr}
+    .sheet{grid-template-columns:1fr}
+    .sheet div{border-right:0;border-bottom:1px solid var(--line)}
+    .sheet div:last-child{border-bottom:0}
+    section{padding:48px 0}
+  }
+  @media (max-width:380px){ .phone{width:100%} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;animation:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="./" aria-label="gsstock home">GSSTOCK</a>
+    <a class="btn main" href="app.html">Open gsstock</a>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <p class="stamp" aria-hidden="true">GS<br>STOCK<span>Godown entries</span></p>
+        <h1>Record every bag that comes in or goes out, right from your phone.</h1>
+        <p class="lead">Type the item and the quantity, tap Bag, Mini or Loose, and save. Every phone in the godown sees the same list, and your stock sheet adds it up for you.</p>
+        <div class="ctas">
+          <a class="btn main" href="app.html">Open gsstock</a>
+          <a class="btn plain" href="#install">Put it on your home screen</a>
+        </div>
+      </div>
+
+      <div>
+        <div class="phone" role="img" aria-label="gsstock on a phone: typing rio 2 shows buttons for 2 Bag, 2 Mini and 2 Loose; tapping 2 Bag adds Rio Tool to the list">
+          <div class="screen">
+            <div class="s-hdr"><b>GSSTOCK</b>
+              <div class="s-tabs"><span class="on">Stock IN</span><span>Stock OUT</span><span>Transport</span><span>Activity</span></div>
+            </div>
+            <div class="s-body">
+              <div class="s-input" id="dIn"><span class="ph">Item, or item + qty</span></div>
+              <div class="s-res" id="dRes">
+                <div class="nm">Rio Tool <small>Plastic</small></div>
+                <div class="s-btns"><span id="dBag">2 Bag</span><span>2 Mini</span><span>2 Loose (PC)</span></div>
+              </div>
+              <div class="s-flash" id="dFlash"><span>✓ Rio Tool, 2 Bag added</span></div>
+              <div class="s-list" id="dList">🧾 This list: 1 item <em>Show</em></div>
+            </div>
+            <div class="s-save" id="dSave">Save Stock IN (1 item)</div>
+          </div>
+        </div>
+        <button class="replay" id="replay" type="button">Play again</button>
+      </div>
+    </div>
+
+    <section aria-labelledby="h-jobs">
+      <h2 id="h-jobs">Four tabs, one for each job in the godown</h2>
+      <p class="sub">Staff open the tab for what they're doing. Nothing else is on the screen to get wrong.</p>
+      <ul class="jobs">
+        <li><span class="ic" aria-hidden="true">📥</span><div><b>Stock IN</b><p>Goods arriving from the factory or a supplier. Give the list a name like "Raju thela" if you like.</p></div></li>
+        <li><span class="ic" aria-hidden="true">📤</span><div><b>Stock OUT</b><p>Goods leaving for a customer or the shop. Saved lists become a tick list the loading staff work through.</p></div></li>
+        <li class="tr"><span class="ic" aria-hidden="true">🚚</span><div><b>Transport</b><p>Book goods by transport name and LR number. When they reach the godown, receive the full LR in one tap, or just the part that arrived.</p></div></li>
+        <li><span class="ic" aria-hidden="true">📋</span><div><b>Activity</b><p>Every entry and receipt, newest first, with who did it and when. Changing a saved list needs your PIN.</p></div></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="h-pack">
+      <div class="pack">
+        <div>
+          <h2 id="h-pack">Counts the way your godown packs</h2>
+          <p class="sub">Each item has its own packing. Staff enter whatever they're holding, and gsstock turns it into pieces so the total is always exact.</p>
+          <p class="sub" style="margin:0">Loose can be pieces, dozens or whatever unit the item is sold in.</p>
+        </div>
+        <div class="tally" aria-label="Example: 2 Bag plus 5 Mini plus 1 Loose of Rio Tool makes 51 pieces">
+          <div class="row"><div class="bags" aria-hidden="true"><i class="bag"></i><i class="bag"></i></div>
+            <div class="what"><b>2 Bag</b><small>1 Bag = 20 PC</small></div><span class="num">40</span></div>
+          <div class="row"><div class="bags" aria-hidden="true"><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i></div>
+            <div class="what"><b>5 Mini</b><small>1 Mini = 2 PC</small></div><span class="num">10</span></div>
+          <div class="row"><div class="bags" aria-hidden="true"><i class="pc"></i></div>
+            <div class="what"><b>1 Loose</b><small>single piece</small></div><span class="num">1</span></div>
+          <div class="sum"><span>Rio Tool in stock</span><b>51 PC</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-sheet">
+      <h2 id="h-sheet">Your Google Sheet stays in charge</h2>
+      <p class="sub">You keep working in the sheet you know. The phones stay quick because they never wait for it.</p>
+      <div class="sheet">
+        <div><p class="who">You, in the sheet</p><b>Items and opening stock</b><p>Add items, packing, categories and other names. Paste opening stock in item order.</p></div>
+        <div><p class="who">Staff, on phones</p><b>Entries in under a second</b><p>Lists save straight away and show on every phone almost instantly.</p></div>
+        <div><p class="who">Back in the sheet</p><b>Stock adds itself up</b><p>Stock, Log and Activity tabs refresh every few minutes, or whenever you press Sync now.</p></div>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="h-install">
+      <h2 id="h-install">Put gsstock on every staff phone</h2>
+      <p class="sub">Open the app in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b>. It opens like any other app, with the gsstock icon. Each person types their name once.</p>
+    </section>
+
+    <div class="end">
+      <div><span class="mark">GSSTOCK</span><p>Stock entries for the whole godown, kept in one place.</p></div>
+      <a class="btn main" href="app.html">Open gsstock</a>
+    </div>
+  </main>
+
+  <footer>gsstock keeps your items and stock in your own Google Sheet.</footer>
+</div>
+
+<script>
+(function () {
+  var inp = document.getElementById('dIn'), res = document.getElementById('dRes'), bag = document.getElementById('dBag'),
+      flash = document.getElementById('dFlash'), list = document.getElementById('dList'), save = document.getElementById('dSave');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timers = [];
+  function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+  function typed(t) { inp.innerHTML = t ? t + '<i class="caret"></i>' : '<span class="ph">Item, or item + qty</span>'; }
+  function finalState() {
+    typed(''); res.classList.remove('show'); flash.classList.add('show'); list.classList.add('show'); save.classList.add('on');
+  }
+  function play() {
+    timers.forEach(clearTimeout); timers = [];
+    flash.classList.remove('show'); list.classList.remove('show'); save.classList.remove('on'); res.classList.remove('show'); bag.classList.remove('press');
+    if (reduce) { finalState(); return; }
+    typed('<span class="ph">Item, or item + qty</span>');
+    var text = 'rio 2', t = 700;
+    for (var i = 1; i <= text.length; i++) (function (s) { at(t, function () { typed(s); }); t += 170; })(text.slice(0, i));
+    at(t - 300, function () { res.classList.add('show'); });
+    at(t + 900, function () { bag.classList.add('press'); });
+    at(t + 1150, function () { bag.classList.remove('press'); finalState(); });
+  }
+  document.getElementById('replay').onclick = play;
+  play();
+})();
+</script>
+</body>
+</html>

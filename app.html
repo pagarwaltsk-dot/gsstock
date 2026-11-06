@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#075E54">
+<title>gsstock</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+  :root{--hdr:#075E54;--green:#25D366;--red:#d9534f;--orange:#e67e22;--out:#DCF8C6;--in:#fff;--bg:#ECE5DD;--text:#111;--muted:#667781}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{font-family:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);
+       height:100vh;height:100dvh;display:flex;flex-direction:column}
+  button,input{font-family:inherit}
+
+  /* header + tabs */
+  header{background:var(--hdr);color:#fff;padding:9px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  header .t{flex:1;font-size:16px;font-weight:700}
+  header .t .brand{font-family:"Big Shoulders Stencil Display",Impact,sans-serif;font-weight:800;font-size:22px;letter-spacing:.05em}
+  header .t small{font-weight:400;opacity:.7;font-size:11px}
+  #who{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;padding:6px 12px;font-size:13px;max-width:50%;
+       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--hdr);flex-shrink:0}
+  .tabs button{border:0;background:none;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;padding:10px 2px 9px;
+               border-bottom:3px solid transparent;position:relative}
+  .tabs button.on{color:#fff;border-bottom-color:#fff}
+  .tabs button.on.o{border-bottom-color:#ff9c96}
+  .tabs button.on.t{border-bottom-color:#ffc27a}
+  .bd{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--green);color:#fff;font-size:11px;line-height:18px;margin-left:3px}
+  .bd:empty{display:none}
+
+  main{flex:1;min-height:0;overflow-y:auto;padding:10px 10px 16px;overscroll-behavior:contain}
+
+  /* sub tabs / chips */
+  .seg{display:flex;gap:6px;margin-bottom:10px}
+  .seg button{flex:1;border:1px solid #ccc;background:#fff;border-radius:18px;padding:8px 4px;font-size:13px;font-weight:700;color:#444}
+  .seg button.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .seg.t button.on{background:var(--orange);border-color:var(--orange)}
+
+  /* cards */
+  .card{background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 1px rgba(0,0,0,.08);margin-bottom:10px}
+  .card .ct{font-weight:700;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .in1{width:100%;font-size:17px;padding:11px 12px;border:1px solid #cfcfcf;border-radius:10px;outline:none;background:#fff;color:var(--text)}
+  .in1:focus{border-color:#128C7E}
+  .tr2{display:flex;gap:6px}
+  .tr2+.tr2{margin-top:6px}
+  .tr2 .in1{min-width:0;font-size:16px;padding:10px}
+  .btn{border:0;border-radius:10px;font-weight:700;font-size:14px;padding:0 14px;flex-shrink:0}
+  .btn.or{background:var(--orange);color:#fff}
+  .btn.gr{background:#eee;color:#555}
+  .line1{display:flex;align-items:center;gap:8px;font-size:15px}
+  .line1 span{flex:1;min-width:0}
+  .line1 button{border:1px solid #ccc;background:#fff;border-radius:14px;padding:5px 10px;font-size:13px;color:#555;flex-shrink:0}
+  .match{font-size:12px;color:#7a4a10;background:#fff4e5;border-radius:6px;padding:6px 8px;margin-top:6px}
+
+  /* search + results (results open BELOW the bar) */
+  .sbar{position:relative}
+  #srch{border-radius:24px;padding-left:16px;font-size:17px}
+  #res{margin-top:6px;background:#fff;border:1px solid #e3e3e3;border-radius:10px;overflow:hidden}
+  #res:empty{display:none}
+  .opt{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;background:#fff;padding:12px;font-size:16px;color:var(--text)}
+  .opt:first-child{background:#eef8f5}
+  .opt:last-child{border-bottom:0}
+  .opt:active{background:#dff2ec}
+  .opt b{color:#075E54}
+  .opt small{float:right;color:var(--muted);font-size:12px;margin-top:2px}
+  .qo{border-bottom:1px solid #eee;padding:8px 10px 10px}
+  .qo:first-child{background:#eef8f5}
+  .qo:last-child{border-bottom:0}
+  .qn{display:block;width:100%;text-align:left;border:0;background:none;padding:2px 0 6px;font-size:16px;color:var(--text)}
+  .qn b{color:#075E54}
+  .qn small{float:right;color:var(--muted);font-size:12px;margin-top:2px}
+  .qb{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .qu{border:0;background:var(--hdr);color:#fff;font-size:14px;font-weight:700;padding:10px 2px;border-radius:9px}
+  .qu:active{background:#128C7E}
+  .qu:disabled{background:#c5d0ce;color:#f4f4f4}
+  .qh{font-size:11px;color:var(--muted);padding:6px 10px;background:#fafafa;border-bottom:1px solid #eee}
+  .rh{font-size:11px;color:var(--muted);margin:8px 0 6px 10px;text-transform:uppercase;letter-spacing:.04em}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 8px 10px}
+  .chip{border:1px solid #cfe5df;background:#f2faf7;border-radius:16px;padding:7px 12px;font-size:14px;color:#075E54}
+  .none{font-size:13px;color:var(--muted);padding:12px}
+
+  /* chosen item */
+  .chosen{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .chosen b{flex:1;font-size:18px;color:#075E54}
+  .chosen button{border:1px solid #ccc;background:#fff;border-radius:14px;padding:5px 10px;font-size:13px;color:#555}
+  #qty{font-size:22px;text-align:center;font-weight:700}
+  #qty.err{border-color:var(--red);background:#fff2f2}
+  .units{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+  .u{border:0;background:var(--hdr);color:#fff;font-size:15px;font-weight:700;padding:10px 2px;border-radius:10px;line-height:1.2}
+  .u small{display:block;font-weight:400;font-size:11px;opacity:.85}
+  .u:active{background:#128C7E}
+  .u:disabled{background:#c5d0ce;color:#f4f4f4}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* this list (hidden until wanted) */
+  .dsum{width:100%;display:flex;align-items:center;gap:8px;border:0;background:#fff;border-radius:12px;padding:12px;font-size:15px;
+        box-shadow:0 1px 1px rgba(0,0,0,.08);color:var(--text);text-align:left}
+  .dsum b{flex:1}
+  .dsum span{color:#128C7E;font-weight:700;font-size:13px}
+  .dlist{background:#fff;border-radius:0 0 12px 12px;margin-top:-8px;padding:6px 12px 8px;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .dl{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
+  .dl:last-child{border-bottom:0}
+  .dl span{flex:1}
+  .pcs{color:var(--muted);font-size:12px}
+  .x{border:0;background:rgba(0,0,0,.07);border-radius:50%;width:28px;height:28px;font-size:13px;color:#555;flex-shrink:0}
+  .empty{text-align:center;color:var(--muted);font-size:13px;margin:18px 0}
+  .flash{text-align:center;margin:4px 0 10px}
+  .flash span{background:#dff2ec;color:#075E54;font-size:13px;padding:6px 12px;border-radius:14px;display:inline-block}
+
+  /* activity */
+  .ev{background:#fff;border-radius:10px;padding:9px 10px;margin-bottom:6px;box-shadow:0 1px 1px rgba(0,0,0,.07);cursor:pointer}
+  .ev .et{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.35}
+  .ev .ei{font-size:17px;line-height:1.1;flex-shrink:0}
+  .ev .ex{flex:1;min-width:0}
+  .ev .tm{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+  .ev .es{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ev.open .es{white-space:normal}
+  .ev .row{margin:8px 0 0}
+  .ev .b{width:100%;max-width:100%;box-shadow:none;border:1px solid #eee}
+  .lnc .in1{font-size:16px;padding:10px 12px}
+  /* saved lists */
+  .fs{margin-bottom:10px}
+  .fs input{width:100%;font-size:15px;padding:10px 14px;border:1px solid #ccc;border-radius:20px;outline:none;background:#fff}
+  .row{display:flex;margin:6px 0}
+  .row.r{justify-content:flex-end}
+  .b{max-width:94%;width:94%;padding:8px 10px;border-radius:10px;box-shadow:0 1px .5px rgba(0,0,0,.13);font-size:15px;line-height:1.35}
+  .l .b{background:var(--in);border-top-left-radius:2px}
+  .r .b{background:var(--out);border-top-right-radius:2px}
+  .entry.done{opacity:.8}
+  .eh{display:flex;align-items:center;gap:6px;cursor:pointer;flex-wrap:wrap}
+  .tag{font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;color:#fff}
+  .tag.in{background:#128C7E}.tag.out{background:var(--red)}.tag.tr{background:var(--orange)}
+  .cnt{margin-left:auto;font-size:12px;color:var(--muted)}
+  .arr{color:var(--muted)}
+  .lrh{font-size:16px}
+  .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .el{margin-top:6px;border-top:1px solid rgba(0,0,0,.08);padding-top:2px}
+  .ck{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:15px}
+  .ck input{width:22px;height:22px;accent-color:var(--hdr);flex-shrink:0;margin:0}
+  .ck input:checked+.lt{text-decoration:line-through;color:var(--muted)}
+  .lt small{display:inline-block;width:100%;font-size:11px;color:#128C7E}
+  .tl{padding:8px 0;border-bottom:1px dashed rgba(0,0,0,.1)}
+  .tl:last-of-type{border-bottom:0}
+  .tl.full .tn{text-decoration:line-through;color:var(--muted)}
+  .tl small{display:block;font-size:11px;color:#128C7E;margin-top:2px}
+  .tl small.part{color:var(--orange);font-weight:600}
+  .ta{display:flex;gap:6px;margin-top:6px}
+  .ta button{flex:1;border:0;border-radius:8px;padding:9px 0;font-size:14px;font-weight:700}
+  .ra{background:#128C7E;color:#fff}
+  .rp{background:#fff4e5;color:#b0600f;border:1px solid #f3c58f !important}
+  .ru{background:none;border:0;color:var(--red);font-size:12px;padding:4px 0;margin-top:2px}
+  .pp{display:flex;gap:6px;margin-top:6px}
+  .pp input{flex:1;font-size:16px;padding:9px 10px;border:1px solid #f3c58f;border-radius:8px;outline:none;min-width:0}
+  .pp button{border:0;border-radius:8px;padding:0 14px;font-weight:700;font-size:14px}
+  .pok{background:var(--orange);color:#fff}
+  .pcl{background:#eee;color:#555}
+  .edb{background:none;border:1px dashed #e0b07a;color:#9a5a12;border-radius:8px;width:100%;padding:8px;font-size:13px;margin:4px 0 6px}
+  .edtr{background:#fff7ec;border:1px solid #f3c58f;border-radius:8px;padding:8px;margin:4px 0 8px}
+  .edtr input{width:100%;font-size:16px;padding:9px 10px;border:1px solid #e3c9a6;border-radius:8px;outline:none;margin-top:6px}
+  .edtr .bt{font-weight:700;font-size:13px;color:#9a5a12}
+  .eds{background:var(--orange);color:#fff}
+  .edc{background:#eee;color:#555}
+  .edl{background:none;border:1px solid #ccc;color:#555;border-radius:8px;width:100%;padding:9px;font-size:13px;margin-top:8px}
+  .eg{background:#f7faf9;border:1px solid #cfe5df;border-radius:10px;padding:8px;margin:6px 0}
+  .eg .bt{font-weight:700;font-size:13px;color:#075E54;margin-bottom:4px}
+  .eg input,.eg select{font-size:16px;padding:8px;border:1px solid #cfcfcf;border-radius:8px;outline:none;background:#fff;min-width:0}
+  .eg .full{width:100%;margin-top:6px}
+  .er{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed #dde}
+  .er:last-child{border-bottom:0}
+  .er .nm{flex:1;min-width:0;font-size:14px}
+  .er .nm small{display:block;color:var(--orange);font-size:11px}
+  .er input{width:64px;text-align:center}
+  .er select{width:92px}
+  .er .x{width:30px;height:30px}
+  .er.new .nm{color:#128C7E}
+  .ea{display:flex;gap:6px;margin-top:8px}
+  .ea input[list]{flex:1}
+  .ea input[type=number]{width:60px}
+  .ea select{width:84px}
+  .ea button{border:0;border-radius:8px;background:#128C7E;color:#fff;font-weight:700;padding:0 10px}
+  .rall{width:100%;margin-top:8px;border:0;background:var(--orange);color:#fff;font-weight:700;font-size:15px;padding:12px;border-radius:8px}
+  .meta{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+
+  /* save — fixed at the bottom of the page */
+  footer{flex-shrink:0;padding:8px 10px;background:#f0f0f0;border-top:1px solid #ddd}
+  footer[hidden]{display:none}
+  #save{width:100%;border:0;border-radius:24px;padding:14px;font-size:16px;font-weight:700;color:#fff;background:var(--green)}
+  #save.o{background:var(--red)}
+  #save.t{background:var(--orange)}
+  #save:disabled{opacity:.45}
+
+  /* name box */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+  .modal[hidden]{display:none}
+  .mbox{background:#fff;border-radius:14px;padding:16px;width:100%;max-width:380px}
+  .mbox b{font-size:17px}
+  .mbox .hint{margin:4px 0 10px}
+  .mbox .chips{padding:8px 0 0}
+  .mbox .ok{width:100%;margin-top:12px;border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:16px;padding:12px}
+
+  #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:8px;
+         font-size:14px;max-width:90%;text-align:center;display:none;z-index:30;pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v10</small></div>
+  <button id="who">👤 Set name</button>
+</header>
+<div class="tabs">
+  <button data-tab="IN">Stock IN</button>
+  <button data-tab="OUT">Stock OUT</button>
+  <button data-tab="TR">🚚 Transport<span class="bd" id="bT"></span></button>
+  <button data-tab="LISTS">📋 Activity<span class="bd" id="bL"></span></button>
+</div>
+
+<main id="view"></main>
+
+<footer id="foot"><button id="save" disabled>Save</button></footer>
+
+<div class="modal" id="nm" hidden>
+  <div class="mbox">
+    <b>Your name</b>
+    <div class="hint">Saved on this phone — you won't be asked again.</div>
+    <input class="in1" id="nmIn" placeholder="Type your name" maxlength="30" autocomplete="off">
+    <div class="chips" id="nmChips"></div>
+    <button class="ok" id="nmOk">OK</button>
+  </div>
+</div>
+<div class="modal" id="pm" hidden>
+  <div class="mbox">
+    <b>🔒 Enter PIN</b>
+    <div class="hint">Needed to change a saved list. The PIN is set in the Google Sheet (Settings tab).</div>
+    <input class="in1" id="pmIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+    <button class="ok" id="pmOk">OK</button>
+    <button class="ok" id="pmNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
+  </div>
+</div>
+<div id="toast"></div>
+<datalist id="trList"></datalist>
+<datalist id="lnList"></datalist>
+<datalist id="itList"></datalist>
+
+<script>
+/* ---------- connection to Supabase (settings are in config.js) ---------- */
+var CFG = window.STOCK_CONFIG || {};
+function rpcCall(fn, body) {
+  var key = String(CFG.key || ''), url = String(CFG.url || '').replace(/\/+$/, '');
+  if (!url || !key || /PASTE/i.test(url + key)) return Promise.reject({ message: 'App not set up — fill config.js with your Supabase URL and key' });
+  var headers = { 'Content-Type': 'application/json', 'apikey': key };
+  if (/^eyJ/.test(key)) headers.Authorization = 'Bearer ' + key;        // older "anon" key style
+  var ctrl = window.AbortController ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
+  return fetch(url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: headers, body: JSON.stringify(body), signal: ctrl ? ctrl.signal : undefined })
+    .then(function (res) {
+      clearTimeout(timer);
+      return res.text().then(function (txt) {
+        var j = null;
+        try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+        if (!res.ok) throw { message: (j && (j.message || j.hint)) || ('Server error ' + res.status) };
+        if (j && j.__error) throw { message: j.__error };
+        return j;
+      });
+    }, function () { clearTimeout(timer); throw { message: 'no signal' }; });
+}
+// same calls the app used before, now answered by Supabase
+var RPC = {
+  getState:    function (v) { return ['get_state', { p_ver: v || '' }]; },
+  saveEntry:   function (p) { return ['save_entry', { p: p }]; },
+  setChecked:  function (row, no, c, by) { return ['set_checked', { p_line: row, p_no: no, p_checked: !!c, p_by: by || '' }]; },
+  receiveLine: function (row, no, q, by) { return ['receive_line', { p_line: row, p_no: no, p_qty: Number(q) || 0, p_by: by || '' }]; },
+  receiveAll:  function (no, by) { return ['receive_all', { p_no: no, p_by: by || '' }]; },
+  undoLine:    function (row, no, by, pin) { return ['undo_line', { p_line: row, p_no: no, p_by: by || '', p_pin: pin || '' }]; },
+  editEntry:   function (no, pin, ch, by) { return ['edit_entry', { p_no: no, p_pin: pin || '', p_ch: ch || {}, p_by: by || '' }]; },
+  verifyPin:   function (pin) { return ['verify_pin', { p_pin: pin || '' }]; }
+};
+var google = { script: { get run() {
+  var ok = function () {}, fail = function () {}, r = {};
+  r.withSuccessHandler = function (f) { ok = f; return r; };
+  r.withFailureHandler = function (f) { fail = f; return r; };
+  Object.keys(RPC).forEach(function (name) {
+    r[name] = function () {
+      var c = RPC[name].apply(null, arguments);
+      rpcCall(c[0], c[1]).then(function (j) { ok(j); }, function (e) { fail(e); });
+    };
+  });
+  return r;
+} } };
+
+var APP_VER = '10';
+var TR_TYPE = 'In Transport';
+var UNITS = ['Bag', 'Mini', 'Loose'];
+var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
+var tab = 'IN', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '' };
+var drafts = { IN: [], OUT: [], TR: [] }, uids = { IN: '', OUT: '', TR: '' };
+var current = '', draftOpen = false, flash = '';
+var trInfo = { name: '', lr: '', from: '' }, trEdit = true;
+var saving = false, loaded = false, polling = false, myName = '', nameCb = null;
+var editing = {}, pinCb = null, pinMem = '', pinAt = 0;
+var entries = {}, ver = '', openNos = {}, busy = {}, partOpen = {}, undoArm = {}, editOpen = {}, seenNos = null;
+
+/* ---------- helpers ---------- */
+function $(id) { return document.getElementById(id); }
+function store(k, v) {
+  var stores = [];
+  try { stores.push(window.localStorage); } catch (e) {}
+  try { stores.push(window.sessionStorage); } catch (e) {}
+  if (v === undefined) {
+    for (var i = 0; i < stores.length; i++) {
+      try { var x = stores[i].getItem(k); if (x !== null) return x; } catch (e) {}
+    }
+    return null;
+  }
+  stores.forEach(function (s) { try { s.setItem(k, v); } catch (e) {} });
+  return null;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmt(n) { return String(Math.round(Number(n) * 1000) / 1000); }
+function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function lrKey(t, lr) {
+  return String(t || '').trim().toLowerCase().replace(/\s+/g, ' ') + '|' + String(lr || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+function luOf(item) { var p = pack[item]; return p && p[2] ? p[2] : ''; }
+function factor(item, unit) {
+  if (unit === UNITS[2]) return 1;
+  var p = pack[item] || [0, 0];
+  return unit === UNITS[0] ? (p[0] || 0) : (unit === UNITS[1] ? (p[1] || 0) : 0);
+}
+function unitText(item, unit) { return unit === UNITS[2] && luOf(item) ? UNITS[2] + ' (' + luOf(item) + ')' : unit; }
+function baseText(item) { return luOf(item) || UNITS[2]; }
+function pcsText(item, qty, unit) {
+  if (unit === UNITS[2]) return '';
+  var f = factor(item, unit);
+  return f ? ' <span class="pcs">= ' + fmt(qty * f) + ' ' + esc(baseText(item)) + '</span>' : '';
+}
+function errMsg(e) { return e && e.message ? e.message : 'no signal'; }
+function toast(msg) {
+  var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.h); toast.h = setTimeout(function () { t.style.display = 'none'; }, 3000);
+}
+function newUid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function busyCount() { return Object.keys(busy).length + Object.keys(partOpen).length + Object.keys(editOpen).length + Object.keys(editing).length; }
+function isEntryView() { return tab === 'IN' || tab === 'OUT' || (tab === 'TR' && trView === 'new'); }
+function draft() { return drafts[tab] || []; }
+
+function saveDrafts() {
+  ['IN', 'OUT', 'TR'].forEach(function (m) {
+    if (drafts[m].length && !uids[m]) uids[m] = newUid();
+    if (!drafts[m].length) uids[m] = '';
+  });
+  store('drafts', JSON.stringify(drafts));
+  store('uids', JSON.stringify(uids));
+}
+
+/* ---------- name: asked once, kept on this phone ---------- */
+function setName(n) {
+  myName = String(n || '').trim();
+  store('name', myName);
+  $('who').textContent = myName ? '👤 ' + myName : '👤 Set name';
+}
+function askName(cb) {
+  nameCb = cb || null;
+  $('nmIn').value = myName;
+  $('nmChips').innerHTML = names.slice(0, 12).map(function (n) {
+    return '<button class="chip" data-nm="' + esc(n) + '">' + esc(n) + '</button>';
+  }).join('');
+  $('nm').hidden = false;
+  setTimeout(function () { $('nmIn').focus(); }, 50);
+}
+function nameOk(n) {
+  n = String(n || '').trim();
+  if (!n) { toast('Type your name'); $('nmIn').focus(); return; }
+  setName(n);
+  $('nm').hidden = true;
+  var cb = nameCb; nameCb = null;
+  if (cb) cb();
+  renderList();
+}
+// run fn now if the name is known, otherwise ask once and then run it
+function withName(fn) { if (myName) fn(); else askName(fn); }
+
+/* ---------- PIN (checked by the sheet) ---------- */
+function askPin(cb) {
+  if (pinMem && Date.now() - pinAt < 5 * 60000) { cb(pinMem); return; }   // remembered for 5 minutes
+  pinCb = cb;
+  $('pmIn').value = '';
+  $('pm').hidden = false;
+  setTimeout(function () { $('pmIn').focus(); }, 50);
+}
+function pinOk() {
+  var p = $('pmIn').value.trim();
+  if (!p) { toast('Type the PIN'); return; }
+  $('pmOk').disabled = true; $('pmOk').textContent = 'Checking…';
+  google.script.run
+    .withSuccessHandler(function () {
+      $('pmOk').disabled = false; $('pmOk').textContent = 'OK';
+      $('pm').hidden = true;
+      pinMem = p; pinAt = Date.now();
+      var cb = pinCb; pinCb = null;
+      if (cb) cb(p);
+    })
+    .withFailureHandler(function (err) {
+      $('pmOk').disabled = false; $('pmOk').textContent = 'OK';
+      toast(errMsg(err)); $('pmIn').value = ''; $('pmIn').focus();
+    })
+    .verifyPin(p);
+}
+function pinFailed(err) {
+  if (/PIN/i.test(errMsg(err))) { pinMem = ''; }
+}
+
+/* ---------- edit a saved list ---------- */
+function unitOpts(item, sel, all) {
+  return UNITS.map(function (u) {
+    var ok = all || factor(item, u);
+    return '<option value="' + esc(u) + '"' + (u === sel ? ' selected' : '') + (ok ? '' : ' disabled') + '>' + esc(unitText(item, u)) + '</option>';
+  }).join('');
+}
+function startEdit(no, pin) {
+  var e = entries[no];
+  if (!e) return;
+  editing[no] = {
+    pin: pin, lname: e.lname || '', name: e.transport, lr: e.lr, from: e.from,
+    lines: e.lines.map(function (l) { return { row: l.row, item: l.item, qty: l.qty, unit: l.unit, recd: l.recd || 0, oq: l.qty, ou: l.unit, del: false }; }),
+    add: [], ai: { item: '', qty: '', unit: UNITS[0] }
+  };
+  openNos[no] = true;
+  renderList();
+}
+function editorHtml(e) {
+  var ed = editing[e.no], isTR = e.type === TR_TYPE;
+  var h = '<div class="eg"><div class="bt">✏️ Editing — changes update stock when saved</div>';
+  if (isTR) {
+    h += '<input class="full" data-ek="name" data-no="' + e.no + '" list="trList" placeholder="Transport name *" value="' + esc(ed.name) + '">' +
+      '<input class="full" data-ek="lr" data-no="' + e.no + '" placeholder="LR no. *" value="' + esc(ed.lr) + '">' +
+      '<input class="full" data-ek="from" data-no="' + e.no + '" placeholder="Party / from" value="' + esc(ed.from) + '">';
+  } else {
+    h += '<input class="full" data-ek="lname" data-no="' + e.no + '" list="lnList" maxlength="40" placeholder="List name (optional)" value="' + esc(ed.lname) + '">';
+  }
+  h += '<div style="margin-top:6px">';
+  ed.lines.forEach(function (l, i) {
+    if (l.del) return;
+    var locked = l.recd > 0;
+    h += '<div class="er"><div class="nm"><b>' + esc(l.item) + '</b>' + (locked ? '<small>' + fmt(l.recd) + ' received</small>' : '') + '</div>' +
+      '<input type="number" inputmode="decimal" min="0" step="any" data-eq="' + i + '" data-no="' + e.no + '" value="' + fmt(l.qty) + '">' +
+      '<select data-eu="' + i + '" data-no="' + e.no + '"' + (locked ? ' disabled' : '') + '>' + unitOpts(l.item, l.unit) + '</select>' +
+      (locked ? '<span style="width:30px"></span>' : '<button class="x" data-edel="' + i + '" data-no="' + e.no + '">✕</button>') + '</div>';
+  });
+  ed.add.forEach(function (l, i) {
+    h += '<div class="er new"><div class="nm"><b>+ ' + esc(l.item) + '</b></div><span>' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) + '</span>' +
+      '<button class="x" data-eadd-del="' + i + '" data-no="' + e.no + '">✕</button></div>';
+  });
+  h += '</div><div class="ea"><input list="itList" data-ai="item" data-no="' + e.no + '" placeholder="+ Add item" value="' + esc(ed.ai.item) + '">' +
+    '<input type="number" inputmode="decimal" min="0" step="any" data-ai="qty" data-no="' + e.no + '" placeholder="Qty" value="' + esc(ed.ai.qty) + '">' +
+    '<select data-ai="unit" data-no="' + e.no + '">' + unitOpts(ed.ai.item, ed.ai.unit, items.indexOf(ed.ai.item) < 0) + '</select>' +
+    '<button data-eadd="' + e.no + '">Add</button></div>' +
+    '<div class="ta"><button class="eds2" data-no="' + e.no + '" style="background:var(--hdr);color:#fff"' + (busy['ed' + e.no] ? ' disabled' : '') + '>' +
+    (busy['ed' + e.no] ? 'Saving…' : 'Save changes') + '</button><button class="edc2" data-no="' + e.no + '" style="background:#eee;color:#555">Cancel</button></div></div>';
+  return h;
+}
+function saveEdit(no) {
+  var ed = editing[no], e = entries[no];
+  if (!ed || !e) return;
+  if (!myName) { askName(function () { saveEdit(no); }); return; }
+  if (ed.ai.item && ed.ai.qty) { toast('Tap Add for the new item first'); return; }
+  var lines = [];
+  for (var i = 0; i < ed.lines.length; i++) {
+    var l = ed.lines[i];
+    if (l.del) { lines.push({ row: l.row, del: true }); continue; }
+    if (!(Number(l.qty) > 0)) { toast('Wrong quantity for ' + l.item); return; }
+    if (Number(l.qty) !== l.oq || l.unit !== l.ou) lines.push({ row: l.row, qty: Number(l.qty), unit: l.unit });
+  }
+  var ch = { lines: lines, add: ed.add.map(function (a) { return { item: a.item, qty: a.qty, unit: a.unit }; }) };
+  if (e.type === TR_TYPE) ch.transport = { name: ed.name, lr: ed.lr, from: ed.from };
+  else ch.lname = ed.lname;
+  busy['ed' + no] = true; renderList();
+  google.script.run
+    .withSuccessHandler(function (ne) {
+      delete busy['ed' + no]; delete editing[no];
+      if (ne) entries[ne.no] = ne; else delete entries[no];
+      renderList(); toast(ne ? 'List updated — stock adjusted' : 'List removed — stock adjusted');
+      setTimeout(function () { poll(true); }, 300);
+    })
+    .withFailureHandler(function (err) {
+      delete busy['ed' + no]; pinFailed(err); renderList(); toast('Not saved — ' + errMsg(err));
+    })
+    .editEntry(no, ed.pin, ch, myName);
+}
+
+/* ---------- tabs ---------- */
+function setTab(t) {
+  if (t !== tab) { current = ''; draftOpen = false; flash = ''; }
+  tab = t; store('tab', t);
+  renderView();
+}
+
+function renderTabs() {
+  var bs = document.querySelectorAll('.tabs button');
+  for (var i = 0; i < bs.length; i++) {
+    var t = bs[i].getAttribute('data-tab');
+    bs[i].className = t === tab ? 'on' + (t === 'OUT' ? ' o' : t === 'TR' ? ' t' : '') : '';
+  }
+  var list = allEntries();
+  var nT = list.filter(function (e) { return e.type === TR_TYPE && !allDone(e); }).length;
+  var nL = list.filter(function (e) { return !allDone(e); }).length;
+  $('bT').textContent = nT || '';
+  $('bL').textContent = nL || '';
+}
+
+function renderView() {
+  renderTabs();
+  var h = '';
+  if (tab === 'TR') {
+    var nT = allEntries().filter(function (e) { return e.type === TR_TYPE && !allDone(e); }).length;
+    h += '<div class="seg t"><button data-trv="new"' + (trView === 'new' ? ' class="on"' : '') + '>➕ New LR</button>' +
+      '<button data-trv="pending"' + (trView === 'pending' ? ' class="on"' : '') + '>Pending LRs' + (nT ? ' (' + nT + ')' : '') + '</button></div>';
+  }
+  if (isEntryView()) {
+    if (tab === 'TR') h += '<div id="trBox"></div>';
+    else h += '<div class="card lnc"><input class="in1" id="lname" list="lnList" maxlength="40" autocomplete="off" ' +
+      'placeholder="📝 List name (optional) — Raju thela, Gaadi…" value="' + esc(listNames[tab] || '') + '"></div>';
+    h += '<div id="entry"></div><div id="flash"></div><div id="draftBox"></div>';
+  } else if (tab === 'TR') {
+    h += '<div class="fs"><input id="fq" data-fq="tr" type="search" placeholder="🔍 Search LR no, transport, party, item" ' +
+      'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + esc(fqText.tr) + '"></div><div id="listArea"></div>';
+  } else {
+    var nL = allEntries().filter(function (e) { return !allDone(e); }).length;
+    h += '<div class="seg"><button data-lv="act"' + (listView === 'act' ? ' class="on"' : '') + '>All activity</button>' +
+      '<button data-lv="pending"' + (listView === 'pending' ? ' class="on"' : '') + '>Pending lists' + (nL ? ' (' + nL + ')' : '') + '</button></div>' +
+      (listView === 'act' ? '<div class="seg">' + [['all', 'All'], ['IN', '📥 Stock IN'], ['OUT', '📤 Stock OUT'], ['TR', '🚚 Transport']].map(function (x) {
+        return '<button data-at="' + x[0] + '"' + (actType === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>';
+      }).join('') + '</div>' : '') +
+      '<div class="fs"><input id="fq" data-fq="lists" type="search" placeholder="🔍 Search item, name, LR, list name" ' +
+      'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + esc(fqText.lists) + '"></div><div id="listArea"></div>';
+  }
+  $('view').innerHTML = h;
+  $('view').scrollTop = 0;
+  renderTrBox();
+  renderEntry();
+  renderDraft();
+  renderList();
+  updateSave();
+}
+
+/* ---------- save button ---------- */
+function updateSave() {
+  var f = $('foot'), b = $('save');
+  f.hidden = !isEntryView();
+  var n = draft().length;
+  b.disabled = !n || saving;
+  b.className = tab === 'OUT' ? 'o' : (tab === 'TR' ? 't' : '');
+  var label = tab === 'OUT' ? 'Save Stock OUT' : (tab === 'TR' ? 'Save 🚚 Transport' : 'Save Stock IN');
+  b.textContent = saving ? 'Saving…' : label + (n ? ' (' + n + ' item' + (n > 1 ? 's' : '') + ')' : '');
+}
+
+/* ---------- transport details ---------- */
+function pendingByKey(key) {
+  for (var n in entries) {
+    var e = entries[n];
+    if (e.type === TR_TYPE && !allDone(e) && lrKey(e.transport, e.lr) === key) return e;
+  }
+  return null;
+}
+function matchText() {
+  var e = (trInfo.name.trim() && trInfo.lr.trim()) ? pendingByKey(lrKey(trInfo.name, trInfo.lr)) : null;
+  return e ? '➕ LR ' + esc(e.lr) + ' is already pending (' + e.lines.length + ' item' + (e.lines.length > 1 ? 's' : '') +
+    ') — new items will be added to it.' : '';
+}
+function renderTrBox() {
+  var box = $('trBox');
+  if (!box) return;
+  var ready = trInfo.name.trim() && trInfo.lr.trim();
+  var mt = matchText();
+  if (ready && !trEdit) {
+    box.innerHTML = '<div class="card"><div class="line1"><span>🚚 <b>' + esc(trInfo.name) + '</b> · LR <b>' + esc(trInfo.lr) + '</b>' +
+      (trInfo.from ? ' · ' + esc(trInfo.from) : '') + '</span><button data-act="trEdit">✎ Edit</button></div>' +
+      (mt ? '<div class="match">' + mt + '</div>' : '') + '</div>';
+    return;
+  }
+  box.innerHTML = '<div class="card"><div class="ct">🚚 Transport details</div>' +
+    '<div class="tr2"><input class="in1" id="trName" data-tr="name" list="trList" placeholder="Transport name *" autocomplete="off" value="' + esc(trInfo.name) + '">' +
+    '<input class="in1" id="trLr" data-tr="lr" placeholder="LR no. *" autocomplete="off" value="' + esc(trInfo.lr) + '"></div>' +
+    '<div class="tr2"><input class="in1" id="trFrom" data-tr="from" placeholder="Party / from" autocomplete="off" value="' + esc(trInfo.from) + '">' +
+    '<button class="btn or" data-act="trDone">Done ✓</button></div>' +
+    '<div class="match" id="trMatch"' + (mt ? '' : ' hidden') + '>' + mt + '</div></div>';
+}
+function trDone() {
+  if (!trInfo.name.trim()) { toast('Type the transport name'); $('trName').focus(); return; }
+  if (!trInfo.lr.trim()) { toast('Type the LR number'); $('trLr').focus(); return; }
+  trEdit = false;
+  renderTrBox();
+  var s = $('srch'); if (s) s.focus();
+}
+
+/* ---------- item search (top) ---------- */
+function buildIndex() {
+  idx = items.map(function (name, i) {
+    var n = norm(name);
+    var p = pack[name] || [];
+    var al = String(p[4] || '').split(/[,;\/]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    return { i: i, name: name, n: n, w: ' ' + n, c: n.replace(/ /g, ''), cat: norm(p[3] || ''), catRaw: p[3] || '',
+             al: al, aln: al.map(function (x) { var y = norm(x); return { n: y, w: ' ' + y, c: y.replace(/ /g, '') }; }) };
+  });
+}
+function highlight(name, tok) {
+  if (!tok) return esc(name);
+  var p = name.toLowerCase().indexOf(tok);
+  if (p < 0) return esc(name);
+  return esc(name.slice(0, p)) + '<b>' + esc(name.slice(p, p + tok.length)) + '</b>' + esc(name.slice(p + tok.length));
+}
+var lastQty = 0;
+function renderResults(q) {
+  var r = $('res');
+  if (!r) return;
+  var nq = norm(q);
+  if (!nq) {
+    lastPick = [];
+    var rec = recent.filter(function (n) { return items.indexOf(n) >= 0; }).slice(0, 8);
+    r.innerHTML = rec.length ? '<div class="rh">Recent</div><div class="chips">' + rec.map(function (n) {
+      return '<button class="chip" data-pick="' + items.indexOf(n) + '">' + esc(n) + '</button>';
+    }).join('') + '</div>' : '';
+    return;
+  }
+  // Rules: a number at the START is part of the item name ("5 hello" = item "5 Hello");
+  //        a number at the END is the quantity ("hello 5" = item "Hello", quantity 5; "5 hello 3" = "5 Hello", 3).
+  //        Only digits (and a decimal point) count as a quantity: "hello 5pc" stays a name search.
+  var qm = String(q).trim().match(/^(.*\S)\s+(\d+(?:[.,]\d+)?)$/), qq = 0;
+  if (qm && norm(qm[1])) { qq = parseFloat(qm[2].replace(',', '.')); if (qq > 0) nq = norm(qm[1]); else qq = 0; }
+  var toks = nq.split(' '), compact = nq.replace(/ /g, '');
+  var res = [];
+  for (var k = 0; k < idx.length; k++) {
+    var it = idx[k], ok = true;
+    // 1) item name
+    var byName = true;
+    for (var t = 0; t < toks.length && ok; t++) {
+      var inName = it.n.indexOf(toks[t]) >= 0 || it.c.indexOf(toks[t]) >= 0;
+      if (!inName) byName = false;
+      ok = inName || (it.cat && it.cat.indexOf(toks[t]) >= 0);
+    }
+    if (!ok) ok = it.c.indexOf(compact) >= 0;
+    var score = 9, via = '';
+    if (ok) score = it.n.indexOf(nq) === 0 ? 0 : (it.w.indexOf(' ' + toks[0]) >= 0 ? 1 : (byName ? 2 : 4));
+    // 2) aliases (other names)
+    for (var a = 0; a < it.aln.length; a++) {
+      var A = it.aln[a], aok = true;
+      for (var t2 = 0; t2 < toks.length && aok; t2++) aok = A.n.indexOf(toks[t2]) >= 0 || A.c.indexOf(toks[t2]) >= 0;
+      if (!aok && A.c.indexOf(compact) < 0) continue;
+      var as = A.n.indexOf(nq) === 0 ? 0 : (A.w.indexOf(' ' + toks[0]) >= 0 ? 1 : 3);
+      if (as < score) { score = as; via = it.al[a]; }
+      ok = true;
+    }
+    if (!ok) continue;
+    res.push({ it: it, s: score, p: it.n.indexOf(toks[0]), via: score < 9 && via ? via : '' });
+  }
+  res.sort(function (a, b) { return a.s - b.s || a.p - b.p || a.it.name.length - b.it.name.length || a.it.i - b.it.i; });
+  res = res.slice(0, 30);
+  lastPick = res.map(function (x) { return x.it.i; });
+  if (!res.length) { r.innerHTML = '<div class="none">No item matches "' + esc(qq ? qm[1] : q) + '" — add it in the Items sheet.</div>'; return; }
+  var tok = toks[0];
+  if (qq) {
+    // items whose own name ends with this number (e.g. "Hello 5") stay choosable as an item
+    var whole = norm(q), wholeHits = idx.filter(function (it) {
+      return (' ' + it.n).slice(-(whole.length + 1)) === ' ' + whole || it.n === whole ||
+             it.aln.some(function (A) { return A.n === whole || (' ' + A.n).slice(-(whole.length + 1)) === ' ' + whole; });
+    }).slice(0, 3);
+    var wholeHtml = wholeHits.map(function (it) {
+      return '<button class="opt" data-pick="' + it.i + '">' + esc(it.name) + '<small>tap to choose this item</small></button>';
+    }).join('');
+    r.innerHTML = wholeHtml + '<div class="qh">Tap a button to add ' + fmt(qq) + ' straight away</div>' + res.slice(0, 15).map(function (x) {
+      var name = x.it.name, lu = luOf(name), tagx = [x.it.catRaw, lu].filter(Boolean).join(' · ');
+      return '<div class="qo"><button class="qn" data-pick="' + x.it.i + '" data-q="' + qq + '">' + highlight(name, tok) +
+        (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') +
+        (tagx ? '<small>' + esc(tagx) + '</small>' : '') + '</button><div class="qb">' +
+        UNITS.map(function (u) {
+          return '<button class="qu" data-qa="' + x.it.i + '" data-u="' + esc(u) + '" data-q="' + qq + '"' +
+            (factor(name, u) ? '' : ' disabled') + '>' + fmt(qq) + ' ' + esc(unitText(name, u)) + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    lastQty = qq;
+    return;
+  }
+  lastQty = 0;
+  r.innerHTML = res.map(function (x) {
+    var lu = luOf(x.it.name), tagx = [x.it.catRaw, lu].filter(Boolean).join(' · ');
+    return '<button class="opt" data-pick="' + x.it.i + '">' + highlight(x.it.name, tok) +
+      (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') +
+      (tagx ? '<small>' + esc(tagx) + '</small>' : '') + '</button>';
+  }).join('');
+}
+
+function renderEntry() {
+  var box = $('entry');
+  if (!box) return;
+  if (!loaded) { box.innerHTML = '<div class="card">Loading…</div>'; return; }
+  if (!items.length) { box.innerHTML = '<div class="card">No items yet. Add item names in the <b>Items</b> sheet (column A), then reopen this page.</div>'; return; }
+
+  if (!current) {
+    box.innerHTML = '<div class="sbar"><input class="in1" id="srch" type="search" placeholder="🔍 Item, or item + qty (e.g. rio 2)" autocomplete="off" ' +
+      'autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"></div><div id="res"></div>';
+    return;
+  }
+
+  var lu = baseText(current);
+  var packHint = [UNITS[0], UNITS[1]].filter(function (u) { return factor(current, u); })
+    .map(function (u) { return '1 ' + esc(u) + ' = ' + fmt(factor(current, u)) + ' ' + esc(lu); }).join(' · ');
+  var missing = [UNITS[0], UNITS[1]].filter(function (u) { return !factor(current, u); });
+  box.innerHTML = '<div class="card"><div class="chosen"><b>' + esc(current) + '</b><button data-act="chg">✕ Change</button></div>' +
+    '<input class="in1" id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Quantity" enterkeyhint="done">' +
+    '<div class="units">' + UNITS.map(function (u, i) {
+      var f = factor(current, u);
+      var sub = i === 2 ? '' : (f ? fmt(f) + ' ' + esc(lu) : 'not set');
+      return '<button class="u" data-u="' + esc(u) + '"' + (f ? '' : ' disabled') + '>' + esc(unitText(current, u)) +
+        (sub ? '<small>' + sub + '</small>' : '') + '</button>';
+    }).join('') + '</div>' +
+    '<div class="hint">' + (packHint || 'Type quantity, then tap ' + esc(unitText(current, UNITS[2]))) +
+    (missing.length ? '<br>' + missing.map(esc).join(' / ') + ' packing not set — fill it in the Items sheet.' : '') + '</div></div>';
+}
+
+function choose(i, qty) {
+  current = items[i];
+  flash = '';
+  renderEntry(); renderFlash();
+  if (qty > 0) $('qty').value = fmt(qty);
+  $('qty').focus();
+}
+
+function quickAdd(i, unit, qty) {
+  current = items[i];
+  addLine(unit, qty);
+}
+
+function addLine(unit, qtyGiven) {
+  if (!factor(current, unit)) { toast(unit + ' packing not set for ' + current); return; }
+  var el = $('qty');
+  var q = qtyGiven > 0 ? qtyGiven : parseFloat(el && el.value);
+  if (!(q > 0)) {
+    el.classList.add('err'); el.focus();
+    setTimeout(function () { el.classList.remove('err'); }, 900);
+    toast('Type the quantity first');
+    return;
+  }
+  var d = draft(), found = null;
+  for (var i = 0; i < d.length; i++) if (d[i].item === current && d[i].unit === unit) found = d[i];
+  if (found) found.qty = Math.round((found.qty + q) * 1000) / 1000;
+  else d.push({ item: current, qty: q, unit: unit });
+
+  recent = [current].concat(recent.filter(function (n) { return n !== current; })).slice(0, 12);
+  store('recent', JSON.stringify(recent));
+
+  flash = '✓ ' + current + ' — ' + fmt(q) + ' ' + unitText(current, unit) + ' added';
+  current = '';
+  saveDrafts();
+  renderEntry(); renderFlash(); renderDraft(); updateSave();
+  $('srch').focus();
+}
+
+function renderFlash() {
+  var f = $('flash');
+  if (f) f.innerHTML = flash ? '<div class="flash"><span>' + esc(flash) + '</span></div>' : '';
+}
+
+/* ---------- this list (collapsed until tapped) ---------- */
+function renderDraft() {
+  var box = $('draftBox');
+  if (!box) return;
+  var d = draft();
+  if (!d.length) {
+    box.innerHTML = '<div class="empty">Search an item above to start the list.</div>';
+    return;
+  }
+  var h = '<button class="dsum" data-act="dtoggle"><b>🧾 This list — ' + d.length + ' item' + (d.length > 1 ? 's' : '') + '</b>' +
+    '<span>' + (draftOpen ? 'Hide ▴' : 'Show ▾') + '</span></button>';
+  if (draftOpen) {
+    h += '<div class="dlist">' + d.map(function (l, i) {
+      return '<div class="dl"><span><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) +
+        pcsText(l.item, l.qty, l.unit) + '</span><button class="x" data-del="' + i + '">✕</button></div>';
+    }).join('') + '</div>';
+  }
+  box.innerHTML = h;
+}
+
+/* ---------- saved lists ---------- */
+function allEntries() {
+  return Object.keys(entries).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return entries[n]; });
+}
+function allDone(e) {
+  for (var i = 0; i < e.lines.length; i++) {
+    var l = e.lines[i];
+    if (e.type === TR_TYPE ? (l.recd || 0) < l.qty : !l.checked) return false;
+  }
+  return true;
+}
+
+function trLineHtml(e, l) {
+  var recd = l.recd || 0, full = recd >= l.qty, rem = Math.round((l.qty - recd) * 1000) / 1000;
+  var h = '<div class="tl' + (full ? ' full' : '') + '"><div class="tn"><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) + '</div>';
+  if (recd > 0 && !full) h += '<small class="part">Received ' + fmt(recd) + ' of ' + fmt(l.qty) + ' · ' + fmt(rem) + ' still pending</small>';
+  if (l.rlog) h += '<small>✓ ' + esc(l.rlog) + '</small>';
+  if (!full) {
+    if (partOpen[l.row]) {
+      h += '<div class="pp"><input type="number" inputmode="decimal" min="0" step="any" class="pq" data-row="' + l.row + '" ' +
+        'placeholder="Qty arrived (max ' + fmt(rem) + ')"><button class="pok" data-row="' + l.row + '" data-no="' + e.no + '">OK</button>' +
+        '<button class="pcl" data-row="' + l.row + '">✕</button></div>';
+    } else {
+      h += '<div class="ta"><button class="ra" data-row="' + l.row + '" data-no="' + e.no + '"' + (busy[l.row] ? ' disabled' : '') + '>✓ Received ' + fmt(rem) + '</button>' +
+        '<button class="rp" data-row="' + l.row + '"' + (busy[l.row] ? ' disabled' : '') + '>Part</button></div>';
+    }
+  }
+  if (recd > 0) h += '<button class="ru" data-row="' + l.row + '" data-no="' + e.no + '">' + (undoArm[l.row] ? 'Tap again to undo' : '↺ Undo receipt') + '</button>';
+  return h + '</div>';
+}
+
+function entryHtml(e, forceOpen) {
+  var isTR = e.type === TR_TYPE, isOut = e.type === 'Stock Out';
+  var n = e.lines.length, done = 0;
+  e.lines.forEach(function (l) { if (isTR ? (l.recd || 0) >= l.qty : l.checked) done++; });
+  var all = done === n;
+  var mine = myName && e.by && e.by.toLowerCase() === myName.toLowerCase();
+  var isOpen = forceOpen || !!openNos[e.no];
+  var h = '<div class="row ' + (mine ? 'r' : 'l') + '"><div class="b entry' + (all ? ' done' : '') + '">';
+
+  if (isTR) {
+    h += '<div class="eh" data-no="' + e.no + '">' + (all ? '<span class="tag in">RECEIVED</span>' : '<span class="tag tr">🚚</span>') +
+      '<span class="lrh"><b>' + esc(e.transport) + '</b> · LR <b>' + esc(e.lr || '—') + '</b></span>' +
+      '<span class="cnt">' + done + '/' + n + ' recd</span><span class="arr">' + (isOpen ? '▾' : '▸') + '</span></div>' +
+      '<div class="sub">#' + e.no + ' · ' + n + ' item' + (n > 1 ? 's' : '') + (e.from ? ' · ' + esc(e.from) : '') + '</div>';
+  } else {
+    h += '<div class="eh" data-no="' + e.no + '">' + (isOut ? '<span class="tag out">OUT</span>' : '<span class="tag in">IN</span>') +
+      (e.lname ? '<b>' + esc(e.lname) + '</b> <span class="pcs">#' + e.no + '</span>' : '<b>#' + e.no + '</b>') +
+      ' · ' + n + ' item' + (n > 1 ? 's' : '') +
+      '<span class="cnt">' + done + '/' + n + ' ✓</span><span class="arr">' + (isOpen ? '▾' : '▸') + '</span></div>';
+  }
+
+  h += '<div class="el"' + (isOpen ? '' : ' hidden') + '>';
+  if (isTR) {
+    var ed = false;
+    if (ed) {
+      h += '<div class="edtr"><div class="bt">✎ Edit transport details</div>' +
+        '<input class="ed" data-no="' + e.no + '" data-k="name" list="trList" placeholder="Transport name *" value="' + esc(ed.name) + '">' +
+        '<input class="ed" data-no="' + e.no + '" data-k="lr" placeholder="LR no. *" value="' + esc(ed.lr) + '">' +
+        '<input class="ed" data-no="' + e.no + '" data-k="from" placeholder="Party / from" value="' + esc(ed.from) + '">' +
+        '<div class="ta"><button class="eds" data-no="' + e.no + '"' + (busy['ed' + e.no] ? ' disabled' : '') + '>Save changes</button>' +
+        '<button class="edc" data-no="' + e.no + '">Cancel</button></div></div>';
+    }
+    if (editing[e.no]) h += editorHtml(e);
+    else e.lines.forEach(function (l) { h += trLineHtml(e, l); });
+    if (!all && !editing[e.no]) h += '<button class="rall" data-no="' + e.no + '"' + (busy['all' + e.no] ? ' disabled' : '') + '>✓ Receive full LR ' + esc(e.lr) + '</button>';
+  } else if (editing[e.no]) {
+    h += editorHtml(e);
+  } else {
+    e.lines.forEach(function (l) {
+      h += '<label class="ck"><input type="checkbox" data-no="' + e.no + '" data-row="' + l.row + '"' +
+        (l.checked ? ' checked' : '') + (busy[l.row] ? ' disabled' : '') + '>' +
+        '<span class="lt">' + esc(l.item) + ' — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) +
+        (l.checked && l.chkBy ? '<small>✓ ' + esc(l.chkBy) + (l.chkAt ? ', ' + esc(l.chkAt) : '') + '</small>' : '') +
+        '</span></label>';
+    });
+  }
+  if (!editing[e.no]) h += '<button class="edl" data-edit="' + e.no + '">🔒 Edit list (PIN)</button>';
+  h += '</div><div class="meta">' + esc(e.time) + (e.by ? ' · ' + esc(e.by) : '') + '</div></div></div>';
+  return h;
+}
+
+var SHOW_ACT = { 'Edited': 1, 'Saved': 1, 'Added to LR': 1, 'Received': 1, 'Part received': 1, 'Received full LR': 1 };
+var ACT_ICON = { 'Added to LR': '➕', 'Received': '✅', 'Received full LR': '✅', 'Part received': '🟠',
+  'Edited': '✏️', 'Receipt undone': '↺', 'Ticked': '☑️', 'Unticked': '⬜', 'LR details changed': '✎' };
+function evHtml(a) {
+  var icon = a.action === 'Saved' ? (a.type === TR_TYPE ? '🚚' : a.type === 'Stock Out' ? '📤' : '📥') : (ACT_ICON[a.action] || '•');
+  var L = '<b>' + esc(a.list) + '</b>';
+  var it = a.item && a.qty !== '' && a.unit !== 'items' ? '<b>' + esc(a.item) + ' ' + fmt(a.qty) + ' ' + esc(unitText(a.item, a.unit)) + '</b>' : '';
+  var cnt = a.unit === 'items' ? a.qty + ' item' + (a.qty > 1 ? 's' : '') : '';
+  var t, sub = '';
+  switch (a.action) {
+    case 'Saved':
+      t = a.type === TR_TYPE ? 'booked transport ' + L : 'saved ' + (a.type === 'Stock Out' ? 'Stock OUT ' : 'Stock IN ') + L;
+      if (cnt) t += ' · ' + cnt;
+      sub = a.item; break;
+    case 'Added to LR': t = 'added ' + cnt + ' to ' + L; sub = a.item; break;
+    case 'Received full LR': t = 'received full ' + L + (cnt ? ' · ' + cnt : ''); sub = a.item; break;
+    case 'Received': t = 'received ' + it + ' from ' + L; break;
+    case 'Part received': t = 'part-received ' + it + ' from ' + L; break;
+    case 'Receipt undone': t = 'undid receipt of ' + it + ' — ' + L; break;
+    case 'Ticked': t = 'ticked ' + it + ' — ' + L; break;
+    case 'Unticked': t = 'unticked ' + it + ' — ' + L; break;
+    case 'Edited': t = 'edited ' + L; sub = a.item; break;
+    case 'LR details changed': t = 'changed LR details → ' + L; sub = a.item; break;
+    default: t = esc(a.action) + ' ' + L;
+  }
+  var open = !!evOpen[a.id];
+  var h = '<div class="ev' + (open ? ' open' : '') + '" data-ev="' + a.id + '"><div class="et"><span class="ei">' + icon + '</span>' +
+    '<div class="ex"><b>' + esc(a.by || '?') + '</b> ' + t + (sub ? '<div class="es">' + esc(sub) + '</div>' : '') + '</div>' +
+    '<span class="tm">' + esc(a.time) + '</span></div>';
+  if (open) {
+    var e = entries[a.no];
+    h += e ? entryHtml(e, true) : '<div class="es" style="margin-top:6px">Older list — open the Log sheet for details.</div>';
+  }
+  return h + '</div>';
+}
+function renderActivity(area) {
+  var fq = norm(fqText.lists);
+  var TYPES = { IN: 'Stock In', OUT: 'Stock Out', TR: TR_TYPE };
+  var show = activity.filter(function (a) {
+    if (!SHOW_ACT[a.action]) return false;                       // only stock in / out / transport entries
+    return actType === 'all' || a.type === TYPES[actType];
+  });
+  if (fq) {
+    var toks = fq.split(' ');
+    show = show.filter(function (a) {
+      var t = norm([a.by, a.action, a.type, a.list, a.item, String(a.no)].join(' '));
+      return toks.every(function (k) { return t.indexOf(k) >= 0; });
+    });
+  }
+  area.innerHTML = show.length ? show.map(evHtml).join('') :
+    '<div class="empty">' + (fq ? 'Nothing matches your search' : 'No entries yet.') + '</div>';
+}
+
+function entryText(e) {
+  return norm([e.transport, e.lr, e.from, e.lname, e.by, String(e.no), e.type].concat(e.lines.map(function (l) { return l.item; })).join(' '));
+}
+
+function renderList() {
+  renderTabs();
+  var area = $('listArea');
+  if (!area) return;
+  var list = allEntries(), show, fq, emptyMsg;
+  if (tab === 'TR') {
+    show = list.filter(function (e) { return e.type === TR_TYPE && !allDone(e); });
+    fq = norm(fqText.tr);
+    emptyMsg = 'Nothing in transport 👍';
+  } else if (listView === 'act') {
+    renderActivity(area);
+    return;
+  } else {
+    show = list.filter(function (e) { return !allDone(e); });
+    show.reverse();   // newest first
+    fq = norm(fqText.lists);
+    emptyMsg = 'Nothing pending 👍';
+  }
+  if (fq) {
+    var toks = fq.split(' ');
+    show = show.filter(function (e) {
+      var t = entryText(e);
+      return toks.every(function (k) { return t.indexOf(k) >= 0; });
+    });
+    emptyMsg = 'Nothing matches your search';
+  }
+  area.innerHTML = show.length ? show.map(entryHtml).join('') : '<div class="empty">' + emptyMsg + '</div>';
+}
+
+/* ---------- data from the sheet ---------- */
+function applyState(d, fromCache) {
+  if (!fromCache) store('lastState', JSON.stringify(d));
+  ver = fromCache ? '' : d.ver;
+  if (String(d.appVer || '') !== APP_VER) { $('vlabel').textContent = '⚠ run new SQL in Supabase'; $('vlabel').style.opacity = '1'; }
+  if (d.pack) pack = d.pack;
+  if (d.items) { items = d.items; buildIndex(); }
+  transports = d.transports || [];
+  names = d.names || [];
+  lnames = d.lnames || [];
+  activity = d.activity || [];
+  $('itList').innerHTML = items.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
+  $('lnList').innerHTML = lnames.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
+  if (d.units && d.units.length) UNITS = d.units;
+
+  var next = {}, fresh = [];
+  (d.entries || []).forEach(function (e) {
+    next[e.no] = e;
+    if (seenNos && !seenNos[e.no] && !(myName && e.by.toLowerCase() === myName.toLowerCase())) fresh.push(e);
+  });
+  entries = next;
+  if (!seenNos) seenNos = {};
+  (d.entries || []).forEach(function (e) { seenNos[e.no] = true; });
+
+  $('trList').innerHTML = transports.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
+
+  if (!loaded) { loaded = true; renderView(); }
+  else {
+    renderList();
+    var m = $('trMatch');
+    if (m) { var t = matchText(); m.innerHTML = t; m.hidden = !t; }
+  }
+  if (fresh.length) {
+    var e = fresh[fresh.length - 1];
+    toast('🔔 New ' + (e.type === TR_TYPE ? 'transport LR ' + e.lr : 'list #' + e.no) + (e.by ? ' from ' + e.by : ''));
+  }
+}
+
+function poll(force) {
+  if (polling) return;
+  if (!force && (document.hidden || saving || busyCount())) return;
+  polling = true;
+  google.script.run
+    .withSuccessHandler(function (d) { polling = false; if (d) applyState(d); })
+    .withFailureHandler(function (err) {
+      polling = false;
+      if (!loaded) { var b = $('entry'); if (b) b.innerHTML = '<div class="card">Could not load — ' + esc(errMsg(err)) + '</div>'; }
+    })
+    .getState(force ? '' : ver);
+}
+
+/* ---------- actions on saved lists ---------- */
+function serverCall(key, fnName, args, okMsg, onFail) {
+  busy[key] = true;
+  renderList();
+  var runner = google.script.run
+    .withSuccessHandler(function (e) {
+      delete busy[key];
+      if (e) entries[e.no] = e;
+      renderList();
+      if (okMsg) toast(okMsg);
+      setTimeout(function () { poll(false); }, 300);
+    })
+    .withFailureHandler(function (err) {
+      delete busy[key];
+      if (onFail) onFail();
+      renderList();
+      toast('Not saved — ' + errMsg(err));
+    });
+  runner[fnName].apply(runner, args);
+}
+
+function tick(cb) {
+  var on = cb.checked;
+  var no = Number(cb.getAttribute('data-no')), row = Number(cb.getAttribute('data-row'));
+  if (!myName) { cb.checked = !on; askName(function () { var c = document.querySelector('input[data-row="' + row + '"]'); if (c) { c.checked = on; tick(c); } }); return; }
+  var line = null;
+  (entries[no] ? entries[no].lines : []).forEach(function (l) { if (l.row === row) line = l; });
+  if (line) { line.checked = on; line.chkBy = on ? myName : ''; line.chkAt = ''; }
+  serverCall(row, 'setChecked', [row, no, on, myName], '', function () { if (line) line.checked = !on; });
+}
+
+function submitPart(btn) {
+  var row = Number(btn.getAttribute('data-row'));
+  var inp = document.querySelector('.pq[data-row="' + row + '"]');
+  var q = parseFloat(inp && inp.value);
+  if (!(q > 0)) { toast('Type how much arrived'); if (inp) inp.focus(); return; }
+  delete partOpen[row];
+  serverCall(row, 'receiveLine', [row, Number(btn.getAttribute('data-no')), q, myName], 'Part received — added to stock');
+}
+
+function onClick(ev) {
+  var t = ev.target, b;
+
+  // sub tabs
+  if ((b = t.closest('[data-trv]'))) { trView = b.getAttribute('data-trv'); current = ''; renderView(); return; }
+  if ((b = t.closest('[data-lv]'))) { listView = b.getAttribute('data-lv'); renderView(); return; }
+  if ((b = t.closest('[data-at]'))) { actType = b.getAttribute('data-at'); renderView(); return; }
+
+  // entry
+  if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
+  if ((b = t.closest('[data-pick]'))) { choose(Number(b.getAttribute('data-pick')), Number(b.getAttribute('data-q') || 0)); return; }
+  if ((b = t.closest('.u'))) { addLine(b.getAttribute('data-u')); return; }
+  if ((b = t.closest('[data-del]'))) {
+    draft().splice(Number(b.getAttribute('data-del')), 1);
+    saveDrafts(); renderDraft(); updateSave();
+    return;
+  }
+  if ((b = t.closest('[data-act]'))) {
+    var a = b.getAttribute('data-act');
+    if (a === 'chg') { current = ''; renderEntry(); $('srch').focus(); }
+    else if (a === 'dtoggle') { draftOpen = !draftOpen; renderDraft(); }
+    else if (a === 'trEdit') { trEdit = true; renderTrBox(); $('trName').focus(); }
+    else if (a === 'trDone') trDone();
+    return;
+  }
+
+  // editing a saved list
+  if ((b = t.closest('[data-edit]'))) {
+    var eno = Number(b.getAttribute('data-edit'));
+    askPin(function (pin) { startEdit(eno, pin); });
+    return;
+  }
+  if ((b = t.closest('.edc2'))) { delete editing[Number(b.getAttribute('data-no'))]; renderList(); return; }
+  if ((b = t.closest('.eds2'))) { saveEdit(Number(b.getAttribute('data-no'))); return; }
+  if ((b = t.closest('[data-edel]'))) {
+    var ed1 = editing[Number(b.getAttribute('data-no'))];
+    ed1.lines[Number(b.getAttribute('data-edel'))].del = true; renderList(); return;
+  }
+  if ((b = t.closest('[data-eadd-del]'))) {
+    editing[Number(b.getAttribute('data-no'))].add.splice(Number(b.getAttribute('data-eadd-del')), 1); renderList(); return;
+  }
+  if ((b = t.closest('[data-eadd]'))) {
+    var ed2 = editing[Number(b.getAttribute('data-eadd'))], ai = ed2.ai, q2 = parseFloat(ai.qty);
+    if (items.indexOf(ai.item) < 0) { toast('Pick an item from the list'); return; }
+    if (!(q2 > 0)) { toast('Type the quantity'); return; }
+    if (!factor(ai.item, ai.unit)) { toast(ai.unit + ' packing not set for ' + ai.item); return; }
+    ed2.add.push({ item: ai.item, qty: q2, unit: ai.unit });
+    ed2.ai = { item: '', qty: '', unit: UNITS[0] };
+    renderList(); return;
+  }
+
+  // saved lists
+  if ((b = t.closest('.edb'))) {
+    var en = Number(b.getAttribute('data-no')), ee = entries[en];
+    editOpen[en] = { name: ee.transport, lr: ee.lr, from: ee.from };
+    renderList();
+    return;
+  }
+  if ((b = t.closest('.edc'))) { delete editOpen[Number(b.getAttribute('data-no'))]; renderList(); return; }
+  if ((b = t.closest('.eds'))) {
+    var sn = Number(b.getAttribute('data-no')), info = editOpen[sn];
+    if (!info.name.trim()) { toast('Type the transport name'); return; }
+    if (!info.lr.trim()) { toast('Type the LR number'); return; }
+    busy['ed' + sn] = true; renderList();
+    google.script.run
+      .withSuccessHandler(function (e) {
+        delete busy['ed' + sn]; delete editOpen[sn];
+        if (e) entries[e.no] = e;
+        renderList(); toast('Transport details updated');
+      })
+      .withFailureHandler(function (err) { delete busy['ed' + sn]; renderList(); toast('Not saved — ' + errMsg(err)); })
+      .editTransport(sn, info, myName);
+    return;
+  }
+  if ((b = t.closest('.rall'))) {
+    var no = Number(b.getAttribute('data-no'));
+    withName(function () { serverCall('all' + no, 'receiveAll', [no, myName], 'Full LR received — added to stock'); });
+    return;
+  }
+  if ((b = t.closest('.ra'))) {
+    var row = Number(b.getAttribute('data-row')), rno = Number(b.getAttribute('data-no'));
+    withName(function () { serverCall(row, 'receiveLine', [row, rno, 0, myName], 'Received — added to stock'); });
+    return;
+  }
+  if ((b = t.closest('.rp'))) {
+    var r1 = Number(b.getAttribute('data-row'));
+    withName(function () {
+      partOpen[r1] = true; renderList();
+      var inp = document.querySelector('.pq[data-row="' + r1 + '"]'); if (inp) inp.focus();
+    });
+    return;
+  }
+  if ((b = t.closest('.pcl'))) { delete partOpen[Number(b.getAttribute('data-row'))]; renderList(); return; }
+  if ((b = t.closest('.pok'))) { submitPart(b); return; }
+  if ((b = t.closest('.ru'))) {
+    var r2 = Number(b.getAttribute('data-row'));
+    if (!undoArm[r2]) {
+      undoArm[r2] = true; renderList();
+      setTimeout(function () { if (undoArm[r2]) { delete undoArm[r2]; renderList(); } }, 3000);
+      return;
+    }
+    delete undoArm[r2];
+    var uno = Number(b.getAttribute('data-no'));
+    askPin(function (pin) {
+      serverCall(r2, 'undoLine', [r2, uno, myName, pin], 'Receipt undone — back in transport', function () { pinMem = ''; });
+    });
+    return;
+  }
+  var h = t.closest('.eh');
+  if (!h && (b = t.closest('.ev')) && !t.closest('.row')) {
+    var id = Number(b.getAttribute('data-ev'));
+    if (evOpen[id]) delete evOpen[id]; else evOpen[id] = true;
+    renderList();
+    return;
+  }
+  if (h && h.closest('.ev')) return;   // card inside activity is always open
+  if (h) {
+    var n = Number(h.getAttribute('data-no'));
+    var list = h.parentNode.querySelector('.el');
+    list.hidden = !list.hidden;
+    if (list.hidden) delete openNos[n]; else openNos[n] = true;
+    h.querySelector('.arr').textContent = list.hidden ? '▸' : '▾';
+  }
+}
+
+function onInput(ev) {
+  var t = ev.target;
+  if (t.id === 'srch') { renderResults(t.value); return; }
+  if (t.id === 'lname') { listNames[tab] = t.value; store('listNames', JSON.stringify(listNames)); return; }
+  if (t.hasAttribute('data-fq')) { fqText[t.getAttribute('data-fq')] = t.value; renderList(); return; }
+  if (t.hasAttribute('data-tr')) {
+    trInfo[t.getAttribute('data-tr')] = t.value;
+    store('trInfo', JSON.stringify(trInfo));
+    var m = $('trMatch'), mt = matchText();
+    if (m) { m.innerHTML = mt; m.hidden = !mt; }
+    return;
+  }
+  if (t.hasAttribute('data-ek')) { var e1 = editing[Number(t.getAttribute('data-no'))]; if (e1) e1[t.getAttribute('data-ek')] = t.value; return; }
+  if (t.hasAttribute('data-eq')) { var e2 = editing[Number(t.getAttribute('data-no'))]; if (e2) e2.lines[Number(t.getAttribute('data-eq'))].qty = t.value; return; }
+  if (t.hasAttribute('data-ai')) {
+    var e3 = editing[Number(t.getAttribute('data-no'))];
+    if (e3) {
+      var k = t.getAttribute('data-ai'); e3.ai[k] = t.value;
+      if (k === 'item' && items.indexOf(t.value) >= 0) {          // item picked → refresh unit choices
+        if (!factor(t.value, e3.ai.unit)) e3.ai.unit = factor(t.value, UNITS[0]) ? UNITS[0] : factor(t.value, UNITS[1]) ? UNITS[1] : UNITS[2];
+        var sel = t.parentNode.querySelector('select[data-ai]');
+        if (sel) sel.innerHTML = unitOpts(t.value, e3.ai.unit);
+      }
+    }
+    return;
+  }
+  if (t.classList.contains('ed')) {
+    var o = editOpen[Number(t.getAttribute('data-no'))];
+    if (o) o[t.getAttribute('data-k')] = t.value;
+  }
+}
+
+function onKey(ev) {
+  if (ev.key !== 'Enter') return;
+  var t = ev.target;
+  if (t.id === 'srch') { ev.preventDefault(); if (lastPick.length) choose(lastPick[0], lastQty); }
+  else if (t.id === 'trName') { ev.preventDefault(); $('trLr').focus(); }
+  else if (t.id === 'trLr') { ev.preventDefault(); $('trFrom').focus(); }
+  else if (t.id === 'trFrom') { ev.preventDefault(); trDone(); }
+  else if (t.classList.contains('pq')) {
+    ev.preventDefault();
+    var btn = document.querySelector('.pok[data-row="' + t.getAttribute('data-row') + '"]');
+    if (btn) submitPart(btn);
+  }
+}
+
+/* ---------- save ---------- */
+function doSave() {
+  var d = draft();
+  if (saving || !d.length) return;
+  if (!myName) { askName(doSave); return; }
+  if (tab === 'TR' && (!trInfo.name.trim() || !trInfo.lr.trim())) {
+    trEdit = true; renderTrBox();
+    toast(!trInfo.name.trim() ? 'Type the transport name' : 'Type the LR number');
+    $(!trInfo.name.trim() ? 'trName' : 'trLr').focus();
+    return;
+  }
+  var m = tab;
+  saving = true; updateSave();
+  var payload = { type: m, by: myName, uid: uids[m], lines: d, transport: m === 'TR' ? trInfo : null,
+                  listName: m === 'TR' ? '' : (listNames[m] || '') };
+  google.script.run
+    .withSuccessHandler(function (e) {
+      saving = false;
+      drafts[m] = []; saveDrafts();
+      if (m === 'TR') { trInfo = { name: '', lr: '', from: '' }; trEdit = true; store('trInfo', JSON.stringify(trInfo)); }
+      else { listNames[m] = ''; store('listNames', JSON.stringify(listNames)); }
+      poll(true);   // refresh Activity
+      entries[e.no] = e;
+      if (!seenNos) seenNos = {};
+      seenNos[e.no] = true;
+      current = ''; draftOpen = false; flash = '';
+      renderView();
+      toast(e.type === TR_TYPE ? (e.merged ? 'Added to LR ' + e.lr : 'Saved LR ' + e.lr + ' — in transport')
+                               : 'Saved ' + (e.lname ? e.lname + ' ' : '') + '#' + e.no + ' — see 📋 Activity');
+    })
+    .withFailureHandler(function (err) {
+      saving = false; updateSave();
+      toast('Not saved (' + errMsg(err) + '). Your list is kept — tap Save again.');
+    })
+    .saveEntry(payload);
+}
+
+/* ---------- start ---------- */
+window.onload = function () {
+  try { var dd = JSON.parse(store('drafts') || 'null'); if (dd) ['IN', 'OUT', 'TR'].forEach(function (k) { drafts[k] = dd[k] || []; }); } catch (e) {}
+  try { var uu = JSON.parse(store('uids') || 'null'); if (uu) uids = uu; } catch (e) {}
+  try { trInfo = JSON.parse(store('trInfo') || 'null') || trInfo; } catch (e) {}
+  try { recent = JSON.parse(store('recent') || '[]') || []; } catch (e) { recent = []; }
+  try { listNames = JSON.parse(store('listNames') || 'null') || listNames; } catch (e) {}
+  trEdit = !(trInfo.name.trim() && trInfo.lr.trim());
+  setName(store('name') || '');
+  var st = store('tab');
+  if (st === 'OUT' || st === 'TR' || st === 'LISTS') tab = st;
+
+  var tabs = document.querySelectorAll('.tabs button');
+  for (var i = 0; i < tabs.length; i++) tabs[i].onclick = function () { setTab(this.getAttribute('data-tab')); };
+  $('save').onclick = doSave;
+  $('who').onclick = function () { askName(null); };
+
+  var v = $('view');
+  v.addEventListener('mousedown', function (ev) {   // keep keyboard open when tapping results / unit buttons
+    if (ev.target.closest('.opt,.chip,.u,.qu,.qn,[data-act="chg"]')) ev.preventDefault();
+  });
+  v.addEventListener('click', onClick);
+  v.addEventListener('input', onInput);
+  v.addEventListener('keydown', onKey);
+  v.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t.type === 'checkbox') { tick(t); return; }
+    if (t.hasAttribute('data-eu')) { var e4 = editing[Number(t.getAttribute('data-no'))]; if (e4) e4.lines[Number(t.getAttribute('data-eu'))].unit = t.value; }
+    if (t.getAttribute('data-ai') === 'unit') { var e5 = editing[Number(t.getAttribute('data-no'))]; if (e5) e5.ai.unit = t.value; }
+  });
+  $('pmOk').onclick = pinOk;
+  $('pmNo').onclick = function () { $('pm').hidden = true; pinCb = null; };
+  $('pmIn').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); pinOk(); } };
+  v.addEventListener('focusin', function (ev) {
+    if (ev.target.id === 'srch') {
+      if (tab === 'TR' && trEdit && trInfo.name.trim() && trInfo.lr.trim()) { trEdit = false; renderTrBox(); }
+      renderResults(ev.target.value);
+    }
+  });
+
+  $('nmOk').onclick = function () { nameOk($('nmIn').value); };
+  $('nmIn').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); nameOk(this.value); } };
+  $('nmChips').onclick = function (ev) { var c = ev.target.closest('[data-nm]'); if (c) nameOk(c.getAttribute('data-nm')); };
+  $('nm').onclick = function (ev) { if (ev.target === this && myName) { this.hidden = true; nameCb = null; } };
+
+  try { var ls = JSON.parse(store('lastState') || 'null'); if (ls) applyState(ls, true); } catch (e) {}   // open instantly with last data
+  renderView();
+  poll(true);
+  setInterval(function () { poll(false); }, 3000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(false); });
+};
+</script>
+</body>
+</html>
