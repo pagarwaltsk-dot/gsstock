@@ -4,6 +4,6 @@
 // key : the PUBLISHABLE key (starts with sb_publishable_) or the old "anon public" key.
 //       Never put the secret / service_role key here — that one goes only in the Google Sheet.
 window.STOCK_CONFIG = {
-  url: 'PASTE_PROJECT_URL_HERE',
-  key: 'PASTE_PUBLISHABLE_KEY_HERE'
+  url: 'https://awdevzbksighnyjtsuic.supabase.co/rest/v1/',
+  key: 'sb_publishable_qNJBl6rmmkRl1E9-_NUj5w_S0K_clx5'
 };
