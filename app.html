@@ -73,7 +73,16 @@
   .opt .pk{display:block;font-size:12px;color:#8a9592;margin-top:3px;font-weight:400}
   .opt .pk b{color:#55635f;font-weight:600}
   .opt small{float:right;color:var(--muted);font-size:12px;margin-top:2px}
-  .qo{border-bottom:1px solid #eee;padding:8px 10px 10px}
+  .qo{border-bottom:1px solid #eee;padding:6px 8px}
+  .qm{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;padding:6px 2px;color:var(--text);font-size:16px;cursor:pointer}
+  .qm .qnm{flex:1;min-width:0}
+  .qm .qnm b{color:#075E54}
+  .qm .qadd{flex-shrink:0;background:var(--hdr);color:#fff;font-weight:700;font-size:15px;border-radius:10px;padding:9px 12px;white-space:nowrap}
+  .qm .qadd .of{color:rgba(255,255,255,.72)}
+  .qm:active .qadd{background:#25D366}
+  .qalt{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;padding:0 2px 4px}
+  .qalt .qu{background:#fff;color:#075E54;border:1px solid #9fcbc1;padding:6px 10px;font-size:13px}
+  .qalt .qu .of{color:#8a9592}
   .qo:first-child{background:#eef8f5}
   .qo:last-child{border-bottom:0}
   .qn{display:block;width:100%;text-align:left;border:0;background:none;padding:2px 0 6px;font-size:16px;color:var(--text)}
@@ -714,15 +723,17 @@ function renderResults(q) {
     var wholeHtml = wholeHits.map(function (it) {
       return '<button class="opt" data-pick="' + it.i + '">' + esc(it.name) + '<small>tap to choose this item</small>' + packLine(it.name) + '</button>';
     }).join('');
-    r.innerHTML = wholeHtml + '<div class="qh">Tap a button to add ' + fmt(qq) + ' straight away</div>' + res.slice(0, 15).map(function (x) {
-      var name = x.it.name;
-      return '<div class="qo"><button class="qn" data-pick="' + x.it.i + '" data-q="' + qq + '">' + highlight(name, tok) +
-        (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') +
-        '</button><div class="qb">' +
-        unitsOf(name).map(function (u) {
-          return '<button class="qu" data-qa="' + x.it.i + '" data-u="' + esc(u) + '" data-q="' + qq + '">' +
-            fmt(qq) + ' ' + unitHtml(name, u) + '</button>';
-        }).join('') + '</div></div>';
+    r.innerHTML = wholeHtml + '<div class="qh">Tap to add ' + fmt(qq) + '</div>' + res.slice(0, 15).map(function (x) {
+      // one line per item: "(8X2) CLIP TIFFIN   1 BORA (of 70 KG)" — tap it to add the main pack;
+      // the item's other sizes sit underneath as small buttons
+      var name = x.it.name, us = unitsOf(name), main = us[0];
+      if (!main) return '';
+      return '<div class="qo"><button class="qm" data-qa="' + x.it.i + '" data-u="' + esc(main) + '" data-q="' + qq + '">' +
+        '<span class="qnm">' + highlight(name, tok) + (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') + '</span>' +
+        '<span class="qadd">' + fmt(qq) + ' ' + unitHtml(name, main) + '</span></button>' +
+        (us.length > 1 ? '<div class="qalt">' + us.slice(1).map(function (u) {
+          return '<button class="qu" data-qa="' + x.it.i + '" data-u="' + esc(u) + '" data-q="' + qq + '">' + fmt(qq) + ' ' + unitHtml(name, u) + '</button>';
+        }).join('') + '</div>' : '') + '</div>';
     }).join('');
     lastQty = qq;
     return;
@@ -1307,7 +1318,7 @@ window.onload = function () {
 
   var v = $('view');
   v.addEventListener('mousedown', function (ev) {   // keep keyboard open when tapping results / unit buttons
-    if (ev.target.closest('.opt,.chip,.u,.qu,.qn,[data-act="chg"]')) ev.preventDefault();
+    if (ev.target.closest('.opt,.chip,.u,.qu,.qm,[data-act="chg"]')) ev.preventDefault();
   });
   v.addEventListener('click', onClick);
   v.addEventListener('input', onInput);
