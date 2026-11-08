@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0B4F47">
 <title>gsstock — godown stock entries from your phone</title>
-<meta name="description" content="gsstock lets godown staff record stock in, stock out and transport (LR) entries from a phone in seconds. Stock is counted in Bag, Mini and Loose and kept in your Google Sheet.">
+<meta name="description" content="gsstock lets godown staff record stock in, stock out and transport (LR) entries from a phone in seconds. Each item counts in its own packing (CTN, bag, piece, dozen) and stock is kept in your Google Sheet.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -106,6 +106,8 @@
   .bag::before{content:"";position:absolute;left:8px;right:8px;top:-5px;height:8px;background:var(--kraft);border-radius:3px;filter:brightness(.85)}
   .bag.mini{width:20px;height:24px;background:#cfae7d;border-radius:5px 5px 7px 7px}
   .bag.mini::before{left:5px;right:5px;top:-4px;height:6px;background:#cfae7d}
+  .ctn{width:34px;height:30px;background:#A87B45;border-radius:3px;position:relative;margin-top:6px}
+  .ctn::before{content:"";position:absolute;left:0;right:0;top:9px;height:3px;background:#8C6434}
   .pc{width:12px;height:12px;border-radius:50%;background:var(--door)}
   .tally .what{flex:1}
   .tally .what b{display:block}
@@ -153,7 +155,7 @@
       <div>
         <p class="stamp" aria-hidden="true">GS<br>STOCK<span>Godown entries</span></p>
         <h1>Record every bag that comes in or goes out, right from your phone.</h1>
-        <p class="lead">Type the item and the quantity, tap Bag, Mini or Loose, and save. Every phone in the godown sees the same list, and your stock sheet adds it up for you.</p>
+        <p class="lead">Type the item and the quantity, tap its packing (CTN, bag or piece), and save. Every phone in the godown sees the same list, and your stock sheet adds it up for you.</p>
         <div class="ctas">
           <a class="btn main" href="app.html">Open gsstock</a>
           <a class="btn plain" href="#install">Put it on your home screen</a>
@@ -161,7 +163,7 @@
       </div>
 
       <div>
-        <div class="phone" role="img" aria-label="gsstock on a phone: typing rio 2 shows buttons for 2 Bag, 2 Mini and 2 Loose; tapping 2 Bag adds Rio Tool to the list">
+        <div class="phone" role="img" aria-label="gsstock on a phone: typing rio 2 shows buttons for 2 CTN, 2 Small Bag and 2 PC; tapping 2 CTN adds Rio Tool to the list">
           <div class="screen">
             <div class="s-hdr"><b>GSSTOCK</b>
               <div class="s-tabs"><span class="on">Stock IN</span><span>Stock OUT</span><span>Transport</span><span>Activity</span></div>
@@ -170,9 +172,9 @@
               <div class="s-input" id="dIn"><span class="ph">Item, or item + qty</span></div>
               <div class="s-res" id="dRes">
                 <div class="nm">Rio Tool <small>Plastic</small></div>
-                <div class="s-btns"><span id="dBag">2 Bag</span><span>2 Mini</span><span>2 Loose (PC)</span></div>
+                <div class="s-btns"><span id="dBag">2 CTN</span><span>2 Small Bag</span><span>2 PC</span></div>
               </div>
-              <div class="s-flash" id="dFlash"><span>✓ Rio Tool, 2 Bag added</span></div>
+              <div class="s-flash" id="dFlash"><span>✓ Rio Tool, 2 CTN added</span></div>
               <div class="s-list" id="dList">🧾 This list: 1 item <em>Show</em></div>
             </div>
             <div class="s-save" id="dSave">Save Stock IN (1 item)</div>
@@ -197,16 +199,16 @@
       <div class="pack">
         <div>
           <h2 id="h-pack">Counts the way your godown packs</h2>
-          <p class="sub">Each item has its own packing. Staff enter whatever they're holding, and gsstock turns it into pieces so the total is always exact.</p>
-          <p class="sub" style="margin:0">Loose can be pieces, dozens or whatever unit the item is sold in.</p>
+          <p class="sub">Each item has its own packing: one comes in cartons, another in bags. Staff enter whatever they're holding, and gsstock turns it into pieces so the total is always exact.</p>
+          <p class="sub" style="margin:0">You name each item's sizes once in the sheet, and those are the buttons staff see.</p>
         </div>
-        <div class="tally" aria-label="Example: 2 Bag plus 5 Mini plus 1 Loose of Rio Tool makes 51 pieces">
-          <div class="row"><div class="bags" aria-hidden="true"><i class="bag"></i><i class="bag"></i></div>
-            <div class="what"><b>2 Bag</b><small>1 Bag = 20 PC</small></div><span class="num">40</span></div>
+        <div class="tally" aria-label="Example: 2 CTN plus 5 Small Bag plus 1 PC of Rio Tool makes 51 pieces">
+          <div class="row"><div class="bags" aria-hidden="true"><i class="ctn"></i><i class="ctn"></i></div>
+            <div class="what"><b>2 CTN</b><small>1 CTN = 20 PC</small></div><span class="num">40</span></div>
           <div class="row"><div class="bags" aria-hidden="true"><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i><i class="bag mini"></i></div>
-            <div class="what"><b>5 Mini</b><small>1 Mini = 2 PC</small></div><span class="num">10</span></div>
+            <div class="what"><b>5 Small Bag</b><small>1 Small Bag = 2 PC</small></div><span class="num">10</span></div>
           <div class="row"><div class="bags" aria-hidden="true"><i class="pc"></i></div>
-            <div class="what"><b>1 Loose</b><small>single piece</small></div><span class="num">1</span></div>
+            <div class="what"><b>1 PC</b><small>single piece</small></div><span class="num">1</span></div>
           <div class="sum"><span>Rio Tool in stock</span><b>51 PC</b></div>
         </div>
       </div>
