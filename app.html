@@ -110,6 +110,8 @@
   .dl:last-child{border-bottom:0}
   .dl span{flex:1}
   .pcs{color:var(--muted);font-size:12px}
+  .of{font-size:.72em;font-weight:400;color:#8a9592;white-space:nowrap}
+  .qu .of,.u .of{color:rgba(255,255,255,.72)}
   .x{border:0;background:rgba(0,0,0,.07);border-radius:50%;width:28px;height:28px;font-size:13px;color:#555;flex-shrink:0}
   .empty{text-align:center;color:var(--muted);font-size:13px;margin:18px 0}
   .flash{text-align:center;margin:4px 0 10px}
@@ -355,6 +357,15 @@ function unitText(item, unit) {
   if (unit === UNITS[1]) return p[6] || 'Mini';
   return p[2] || 'Loose';
 }
+// "BORA (of 10 KG)": size name, then what is inside it in small light text
+function unitHtml(item, unit) {
+  var f = factor(item, unit);
+  return esc(unitText(item, unit)) + (unit !== UNITS[2] && f ? ' <span class="of">(of ' + fmt(f) + ' ' + esc(baseText(item)) + ')</span>' : '');
+}
+function unitPlain(item, unit) {                       // same, for places that can't show small text (drop-down lists)
+  var f = factor(item, unit);
+  return unitText(item, unit) + (unit !== UNITS[2] && f ? ' (of ' + fmt(f) + ' ' + baseText(item) + ')' : '');
+}
 function unitsOf(item) { return UNITS.filter(function (u) { return factor(item, u); }); }   // only the sizes this item has
 function baseText(item) { return luOf(item) || UNITS[2]; }
 function pcsText(item, qty, unit) {
@@ -442,7 +453,7 @@ function pinFailed(err) {
 function unitOpts(item, sel, all) {
   return UNITS.map(function (u) {
     var ok = all || factor(item, u);
-    return '<option value="' + esc(u) + '"' + (u === sel ? ' selected' : '') + (ok ? '' : ' disabled') + '>' + esc(unitText(item, u)) + '</option>';
+    return '<option value="' + esc(u) + '"' + (u === sel ? ' selected' : '') + (ok ? '' : ' disabled') + '>' + esc(unitPlain(item, u)) + '</option>';
   }).join('');
 }
 function startEdit(no, pin) {
@@ -476,7 +487,7 @@ function editorHtml(e) {
       (locked ? '<span style="width:30px"></span>' : '<button class="x" data-edel="' + i + '" data-no="' + e.no + '">✕</button>') + '</div>';
   });
   ed.add.forEach(function (l, i) {
-    h += '<div class="er new"><div class="nm"><b>+ ' + esc(l.item) + '</b></div><span>' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) + '</span>' +
+    h += '<div class="er new"><div class="nm"><b>+ ' + esc(l.item) + '</b></div><span>' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) + '</span>' +
       '<button class="x" data-eadd-del="' + i + '" data-no="' + e.no + '">✕</button></div>';
   });
   h += '</div><div class="ea"><input list="itList" data-ai="item" data-no="' + e.no + '" placeholder="+ Add item" value="' + esc(ed.ai.item) + '">' +
@@ -702,7 +713,7 @@ function renderResults(q) {
         '</button><div class="qb">' +
         unitsOf(name).map(function (u) {
           return '<button class="qu" data-qa="' + x.it.i + '" data-u="' + esc(u) + '" data-q="' + qq + '">' +
-            fmt(qq) + ' ' + esc(unitText(name, u)) + '</button>';
+            fmt(qq) + ' ' + unitHtml(name, u) + '</button>';
         }).join('') + '</div></div>';
     }).join('');
     lastQty = qq;
@@ -734,12 +745,9 @@ function renderEntry() {
   box.innerHTML = '<div class="card"><div class="chosen"><b>' + esc(current) + '</b><button data-act="chg">✕ Change</button></div>' +
     '<input class="in1" id="qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Quantity" enterkeyhint="done">' +
     '<div class="units">' + unitsOf(current).map(function (u) {
-      var f = factor(current, u);
-      var sub = u === UNITS[2] ? '' : fmt(f) + ' ' + esc(lu);
-      return '<button class="u" data-u="' + esc(u) + '">' + esc(unitText(current, u)) +
-        (sub ? '<small>' + sub + '</small>' : '') + '</button>';
+      return '<button class="u" data-u="' + esc(u) + '">' + unitHtml(current, u) + '</button>';
     }).join('') + '</div>' +
-    '<div class="hint">' + (packHint || 'Type quantity, then tap ' + esc(unitText(current, UNITS[2]))) + '</div></div>';
+    '</div>';
 }
 
 function choose(i, qty) {
@@ -798,8 +806,8 @@ function renderDraft() {
     '<span>' + (draftOpen ? 'Hide ▴' : 'Show ▾') + '</span></button>';
   if (draftOpen) {
     h += '<div class="dlist">' + d.map(function (l, i) {
-      return '<div class="dl"><span><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) +
-        pcsText(l.item, l.qty, l.unit) + '</span><button class="x" data-del="' + i + '">✕</button></div>';
+      return '<div class="dl"><span><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) +
+        '</span><button class="x" data-del="' + i + '">✕</button></div>';
     }).join('') + '</div>';
   }
   box.innerHTML = h;
@@ -819,7 +827,7 @@ function allDone(e) {
 
 function trLineHtml(e, l) {
   var recd = l.recd || 0, full = recd >= l.qty, rem = Math.round((l.qty - recd) * 1000) / 1000;
-  var h = '<div class="tl' + (full ? ' full' : '') + '"><div class="tn"><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) + '</div>';
+  var h = '<div class="tl' + (full ? ' full' : '') + '"><div class="tn"><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) + '</div>';
   if (recd > 0 && !full) h += '<small class="part">Received ' + fmt(recd) + ' of ' + fmt(l.qty) + ' · ' + fmt(rem) + ' still pending</small>';
   if (l.rlog) h += '<small>✓ ' + esc(l.rlog) + '</small>';
   if (!full) {
@@ -877,7 +885,7 @@ function entryHtml(e, forceOpen) {
     e.lines.forEach(function (l) {
       h += '<label class="ck"><input type="checkbox" data-no="' + e.no + '" data-row="' + l.row + '"' +
         (l.checked ? ' checked' : '') + (busy[l.row] ? ' disabled' : '') + '>' +
-        '<span class="lt">' + esc(l.item) + ' — ' + fmt(l.qty) + ' ' + esc(unitText(l.item, l.unit)) +
+        '<span class="lt">' + esc(l.item) + ' — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) +
         (l.checked && l.chkBy ? '<small>✓ ' + esc(l.chkBy) + (l.chkAt ? ', ' + esc(l.chkAt) : '') + '</small>' : '') +
         '</span></label>';
     });
@@ -893,7 +901,7 @@ var ACT_ICON = { 'Added to LR': '➕', 'Received': '✅', 'Received full LR': '�
 function evHtml(a) {
   var icon = a.action === 'Saved' ? (a.type === TR_TYPE ? '🚚' : a.type === 'Stock Out' ? '📤' : '📥') : (ACT_ICON[a.action] || '•');
   var L = '<b>' + esc(a.list) + '</b>';
-  var it = a.item && a.qty !== '' && a.unit !== 'items' ? '<b>' + esc(a.item) + ' ' + fmt(a.qty) + ' ' + esc(unitText(a.item, a.unit)) + '</b>' : '';
+  var it = a.item && a.qty !== '' && a.unit !== 'items' ? '<b>' + esc(a.item) + ' ' + fmt(a.qty) + ' ' + unitHtml(a.item, a.unit) + '</b>' : '';
   var cnt = a.unit === 'items' ? a.qty + ' item' + (a.qty > 1 ? 's' : '') : '';
   var t, sub = '';
   switch (a.action) {
