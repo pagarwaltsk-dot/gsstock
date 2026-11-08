@@ -70,6 +70,8 @@
   .opt:last-child{border-bottom:0}
   .opt:active{background:#dff2ec}
   .opt b{color:#075E54}
+  .opt .pk{display:block;font-size:12px;color:#8a9592;margin-top:3px;font-weight:400}
+  .opt .pk b{color:#55635f;font-weight:600}
   .opt small{float:right;color:var(--muted);font-size:12px;margin-top:2px}
   .qo{border-bottom:1px solid #eee;padding:8px 10px 10px}
   .qo:first-child{background:#eef8f5}
@@ -365,6 +367,12 @@ function unitHtml(item, unit) {
 function unitPlain(item, unit) {                       // same, for places that can't show small text (drop-down lists)
   var f = factor(item, unit);
   return unitText(item, unit) + (unit !== UNITS[2] && f ? ' (of ' + fmt(f) + ' ' + baseText(item) + ')' : '');
+}
+// search results show only the main packing: "BORA (of 10 KG)" (small pack if the item has no big pack)
+function packLine(item) {
+  var u = factor(item, UNITS[0]) ? UNITS[0] : (factor(item, UNITS[1]) ? UNITS[1] : '');
+  if (!u) return '';
+  return '<span class="pk"><b>' + esc(unitText(item, u)) + '</b> (of ' + fmt(factor(item, u)) + ' ' + esc(baseText(item)) + ')</span>';
 }
 function unitsOf(item) { return UNITS.filter(function (u) { return factor(item, u); }); }   // only the sizes this item has
 function baseText(item) { return luOf(item) || UNITS[2]; }
@@ -704,7 +712,7 @@ function renderResults(q) {
              it.aln.some(function (A) { return A.n === whole || (' ' + A.n).slice(-(whole.length + 1)) === ' ' + whole; });
     }).slice(0, 3);
     var wholeHtml = wholeHits.map(function (it) {
-      return '<button class="opt" data-pick="' + it.i + '">' + esc(it.name) + '<small>tap to choose this item</small></button>';
+      return '<button class="opt" data-pick="' + it.i + '">' + esc(it.name) + '<small>tap to choose this item</small>' + packLine(it.name) + '</button>';
     }).join('');
     r.innerHTML = wholeHtml + '<div class="qh">Tap a button to add ' + fmt(qq) + ' straight away</div>' + res.slice(0, 15).map(function (x) {
       var name = x.it.name;
@@ -723,7 +731,7 @@ function renderResults(q) {
   r.innerHTML = res.map(function (x) {
     return '<button class="opt" data-pick="' + x.it.i + '">' + highlight(x.it.name, tok) +
       (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') +
-      '</button>';
+      packLine(x.it.name) + '</button>';
   }).join('');
 }
 
