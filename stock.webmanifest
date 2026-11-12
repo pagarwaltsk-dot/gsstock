@@ -1,0 +1,15 @@
+{
+  "id": "gsstock-stock",
+  "name": "gsstock Stock",
+  "short_name": "gs Stock",
+  "description": "Current stock and stock movement",
+  "start_url": "stock.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E7EAE6",
+  "theme_color": "#0B4F47",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -27,7 +27,47 @@
   header .t small{font-weight:400;opacity:.7;font-size:11px}
   #who{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;padding:6px 12px;font-size:13px;max-width:50%;
        overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--hdr);flex-shrink:0}
+  .tabs{display:flex;background:var(--hdr);flex-shrink:0}
+  .tabs button{flex:1 1 0;min-width:0}
+  .tabs button[hidden]{display:none}
+  #inst{border:0;background:#25D366;color:#fff;border-radius:16px;padding:6px 10px;font-size:13px;font-weight:700}
+  #inst[hidden]{display:none}
+  .login{position:fixed;inset:0;background:var(--hdr);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+  .login[hidden]{display:none}
+  .lbox{width:100%;max-width:380px;color:#fff}
+  .lbrand{font-family:"Big Shoulders Stencil Display",Impact,sans-serif;font-weight:800;font-size:56px;letter-spacing:.05em;line-height:1;margin-bottom:22px}
+  .lq{font-size:18px;margin:0 0 12px}
+  .lnames{display:flex;flex-wrap:wrap;gap:8px}
+  .lnames button{border:0;background:#fff;color:var(--hdr);font-weight:700;font-size:17px;border-radius:12px;padding:13px 18px}
+  .lnames .hint{color:rgba(255,255,255,.8)}
+  .lpin{font-size:24px;text-align:center;letter-spacing:.3em}
+  .login .ok{background:#25D366}
+  .lback{background:none;border:0;color:rgba(255,255,255,.85);text-decoration:underline;font-size:14px;margin-top:14px;padding:6px 0}
+  .lerr{min-height:22px;margin-top:12px;color:#ffd2cf;font-weight:600}
+  /* Stock tab */
+  .sk{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:11px 12px;margin-bottom:6px;box-shadow:0 1px 1px rgba(0,0,0,.06);cursor:pointer}
+  .sk .nm{flex:1;min-width:0;font-size:15px}
+  .sk .nm small{display:block;color:var(--orange);font-size:12px}
+  .sk .q{font-weight:700;font-size:15px;text-align:right;white-space:nowrap}
+  .sk .q.neg,.lg .bal.neg{color:var(--red)}
+  .lhead{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .lhead .back{border:0;background:none;color:#128C7E;font-weight:700;font-size:14px;padding:0 0 8px}
+  .lhead h3{margin:0 0 6px;font-size:18px}
+  .lhead .now{font-size:24px;font-weight:800;color:var(--hdr)}
+  .lhead .now.neg{color:var(--red)}
+  .lhead .sub2{font-size:13px;color:var(--muted);margin-top:2px}
+  .lhead .trn{margin-top:10px;padding-top:8px;border-top:1px dashed #e3e3e3;font-size:13px;color:#7a4a10}
+  .lhead .warn{margin-top:8px;font-size:12px;color:var(--red)}
+  .lg{display:flex;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+  .lg .d{flex:1;min-width:0}
+  .lg .d b{font-size:14px}
+  .lg .d small{display:block;color:var(--muted);font-size:12px}
+  .lg .d .li{font-size:13px;color:#333}
+  .lg .m{text-align:right;white-space:nowrap}
+  .lg .mv{font-weight:800;font-size:15px}
+  .lg .mv.in{color:#128C7E}.lg .mv.out{color:var(--red)}
+  .lg .bal{font-size:12px;color:var(--muted);margin-top:2px}
+  .lg.op{background:#f7faf9;border:1px dashed #cfe5df;box-shadow:none}
   .tabs button{border:0;background:none;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;padding:10px 2px 9px;
                border-bottom:3px solid transparent;position:relative}
   .tabs button.on{color:#fff;border-bottom-color:#fff}
@@ -225,27 +265,44 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v11</small></div>
-  <button id="who">👤 Set name</button>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v12</small></div>
+  <button id="inst" hidden>⤓ Install</button>
+  <button id="who">👤</button>
 </header>
-<div class="tabs">
-  <button data-tab="IN">Stock IN</button>
-  <button data-tab="OUT">Stock OUT</button>
-  <button data-tab="TR">🚚 Transport<span class="bd" id="bT"></span></button>
-  <button data-tab="LISTS">📋 Activity<span class="bd" id="bL"></span></button>
+<div class="tabs" id="tabs">
+  <button data-tab="IN">IN</button>
+  <button data-tab="OUT">OUT</button>
+  <button data-tab="TR">Transport<span class="bd" id="bT"></span></button>
+  <button data-tab="LISTS">Activity<span class="bd" id="bL"></span></button>
 </div>
 
 <main id="view"></main>
 
 <footer id="foot"><button id="save" disabled>Save</button></footer>
 
-<div class="modal" id="nm" hidden>
+<!-- login: every staff member has their own PIN (Staff sheet) -->
+<div class="login" id="login" hidden>
+  <div class="lbox">
+    <div class="lbrand">GSSTOCK</div>
+    <div id="lStep1">
+      <p class="lq">Who are you?</p>
+      <div class="lnames" id="lNames"><div class="hint">Loading names…</div></div>
+    </div>
+    <div id="lStep2" hidden>
+      <p class="lq">Hi <b id="lWho"></b>, type your PIN</p>
+      <input class="in1 lpin" id="lPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Your PIN">
+      <button class="ok" id="lGo">Log in</button>
+      <button class="lback" id="lBack">Not you? Choose another name</button>
+    </div>
+    <div class="lerr" id="lErr"></div>
+  </div>
+</div>
+<div class="modal" id="me" hidden>
   <div class="mbox">
-    <b>Your name</b>
-    <div class="hint">Saved on this phone — you won't be asked again.</div>
-    <input class="in1" id="nmIn" placeholder="Type your name" maxlength="30" autocomplete="off">
-    <div class="chips" id="nmChips"></div>
-    <button class="ok" id="nmOk">OK</button>
+    <b id="meName"></b>
+    <div class="hint">Your entries are saved in your name.</div>
+    <button class="ok" id="meOut" style="background:#d9534f">Log out</button>
+    <button class="ok" id="meClose" style="background:#eee;color:#555;margin-top:6px">Close</button>
   </div>
 </div>
 <div class="modal" id="pm" hidden>
@@ -289,21 +346,26 @@ function rpcCall(fn, body) {
         var j = null;
         try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
         if (!res.ok) throw { message: (j && (j.message || j.hint)) || ('Server error ' + res.status) };
+        if (j && j.__auth) { authLost(); throw { message: j.__auth, auth: true }; }
         if (j && j.__error) throw { message: j.__error };
         return j;
       });
     }, function () { clearTimeout(timer); throw { message: 'no signal' }; });
 }
 // same calls the app used before, now answered by Supabase
+var TOKEN = '';
+function tk() { return TOKEN; }
 var RPC = {
-  getState:    function (v) { return ['get_state', { p_ver: v || '' }]; },
-  saveEntry:   function (p) { return ['save_entry', { p: p }]; },
-  setChecked:  function (row, no, c, by) { return ['set_checked', { p_line: row, p_no: no, p_checked: !!c, p_by: by || '' }]; },
-  receiveLine: function (row, no, q, by) { return ['receive_line', { p_line: row, p_no: no, p_qty: Number(q) || 0, p_by: by || '' }]; },
-  receiveAll:  function (no, by) { return ['receive_all', { p_no: no, p_by: by || '' }]; },
-  undoLine:    function (row, no, by, pin) { return ['undo_line', { p_line: row, p_no: no, p_by: by || '', p_pin: pin || '' }]; },
-  editEntry:   function (no, pin, ch, by) { return ['edit_entry', { p_no: no, p_pin: pin || '', p_ch: ch || {}, p_by: by || '' }]; },
-  verifyPin:   function (pin) { return ['verify_pin', { p_pin: pin || '' }]; }
+  getState:    function (v) { return ['get_state', { p_token: tk(), p_ver: v || '' }]; },
+  saveEntry:   function (p) { return ['save_entry', { p_token: tk(), p: p }]; },
+  setChecked:  function (row, no, c) { return ['set_checked', { p_token: tk(), p_line: row, p_no: no, p_checked: !!c }]; },
+  receiveLine: function (row, no, q) { return ['receive_line', { p_token: tk(), p_line: row, p_no: no, p_qty: Number(q) || 0 }]; },
+  receiveAll:  function (no) { return ['receive_all', { p_token: tk(), p_no: no }]; },
+  undoLine:    function (row, no, by, pin) { return ['undo_line', { p_token: tk(), p_line: row, p_no: no, p_pin: pin || '' }]; },
+  editEntry:   function (no, pin, ch) { return ['edit_entry', { p_token: tk(), p_no: no, p_pin: pin || '', p_ch: ch || {} }]; },
+  verifyPin:   function (pin) { return ['verify_pin', { p_token: tk(), p_pin: pin || '' }]; },
+  stockList:   function () { return ['stock_list', { p_token: tk() }]; },
+  itemLedger:  function (item) { return ['item_ledger', { p_token: tk(), p_item: item }]; }
 };
 var google = { script: { get run() {
   var ok = function () {}, fail = function () {}, r = {};
@@ -318,11 +380,11 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '11';
+var APP_VER = '12';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
-var tab = 'IN', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '' };
+var tab = 'IN', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '', stock: '' };
 var drafts = { IN: [], OUT: [], TR: [] }, uids = { IN: '', OUT: '', TR: '' };
 var current = '', draftOpen = false, flash = '';
 var trInfo = { name: '', lr: '', from: '' }, trEdit = true;
@@ -398,6 +460,76 @@ function toast(msg) {
 function newUid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function busyCount() { return Object.keys(busy).length + Object.keys(partOpen).length + Object.keys(editOpen).length + Object.keys(editing).length; }
 function isEntryView() { return tab === 'IN' || tab === 'OUT' || (tab === 'TR' && trView === 'new'); }
+
+/* ---------- Stock tab: current stock of every item, tap one for its movement ---------- */
+var stockRows = null, stockItem = '', ledger = null, stockBusy = false;
+function packText(item, pcs) {
+  pcs = Math.round(Number(pcs) * 1000) / 1000;
+  var neg = pcs < 0, t = Math.abs(pcs), parts = [];
+  [UNITS[0], UNITS[1]].forEach(function (u) {
+    var f = factor(item, u);
+    if (f > 0 && t + 1e-9 >= f) { var k = Math.floor((t + 1e-9) / f); parts.push(k + ' ' + unitText(item, u)); t = Math.round((t - k * f) * 1000) / 1000; }
+  });
+  if (t || !parts.length) parts.push(fmt(t) + ' ' + baseText(item));
+  return (neg ? '−' : '') + parts.join(' + ');
+}
+function loadStock(quiet) {
+  if (stockBusy) return;
+  stockBusy = true;
+  var fn = stockItem ? 'itemLedger' : 'stockList';
+  var runner = google.script.run
+    .withSuccessHandler(function (r) {
+      stockBusy = false;
+      if (fn === 'itemLedger') ledger = r; else stockRows = r || [];
+      if (tab === 'STOCK') renderList();
+    })
+    .withFailureHandler(function (e) {
+      stockBusy = false;
+      if (!quiet) { var a = $('listArea'); if (a) a.innerHTML = '<div class="empty">' + esc(errMsg(e)) + '</div>'; }
+    });
+  if (stockItem) runner.itemLedger(stockItem); else runner.stockList();
+}
+function renderStock(area) {
+  if (stockItem) { renderLedger(area); return; }
+  if (!stockRows) { area.innerHTML = '<div class="empty">Loading stock…</div>'; return; }
+  var fq = norm(fqText.stock || ''), toks = fq ? fq.split(' ') : [];
+  var show = stockRows.filter(function (r) {
+    if (!toks.length) return true;
+    var p = pack[r[0]] || [], t = norm(r[0] + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return t.indexOf(k) >= 0; });
+  });
+  var more = show.length > 150;
+  area.innerHTML = show.length ? show.slice(0, 150).map(function (r) {
+    return '<div class="sk" data-sk="' + esc(r[0]) + '"><div class="nm">' + esc(r[0]) +
+      (r[2] ? '<small>🚚 ' + esc(packText(r[0], r[2])) + ' on the way</small>' : '') + '</div>' +
+      '<div class="q' + (r[1] < 0 ? ' neg' : '') + '">' + esc(packText(r[0], r[1])) + '</div></div>';
+  }).join('') + (more ? '<div class="empty">Type to find more items</div>' : '') : '<div class="empty">No item matches</div>';
+}
+function renderLedger(area) {
+  var L = ledger, item = stockItem;
+  var h = '<div class="lhead"><button class="back" data-act="skBack">‹ All items</button><h3>' + esc(item) + '</h3>';
+  if (!L || L.item.toLowerCase() !== item.toLowerCase()) { area.innerHTML = h + '<div class="sub2">Loading…</div></div>'; return; }
+  h += '<div class="now' + (L.total < 0 ? ' neg' : '') + '">' + esc(packText(item, L.total)) + '</div>' +
+    '<div class="sub2">in stock now' + (UNITS.some(function (u) { return u !== UNITS[2] && factor(item, u); }) ? ' (= ' + fmt(L.total) + ' ' + esc(baseText(item)) + ')' : '') + '</div>';
+  if (L.pending && L.pending.length) {
+    h += '<div class="trn">🚚 On the way: ' + L.pending.map(function (p) {
+      return '<b>' + fmt(p.qty) + ' ' + unitHtml(item, p.unit) + '</b> — ' + esc(p.list);
+    }).join('<br>') + '</div>';
+  }
+  if (L.bad) h += '<div class="warn">Not counted: ' + esc(L.bad) + ' — fill packing in the Items sheet</div>';
+  h += '</div>';
+  h += (L.rows || []).map(function (r) {
+    var cls = r.kind === 'OUT' ? 'out' : 'in';
+    var word = r.kind === 'OUT' ? 'OUT' : (r.kind === 'RECEIVED' ? 'IN 🚚' : 'IN');
+    return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
+      '<div class="li">(' + esc(r.list) + ')</div></div>' +
+      '<div class="m"><div class="mv ' + cls + '">' + fmt(r.qty) + ' ' + unitHtml(item, r.unit) + ' ' + word + '</div>' +
+      '<div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' + esc(packText(item, r.bal)) + '</div></div></div>';
+  }).join('');
+  h += '<div class="lg op"><div class="d"><b>Opening balance</b><small>from the Items sheet</small></div>' +
+    '<div class="m"><div class="mv">' + esc(packText(item, L.opening)) + '</div></div></div>';
+  area.innerHTML = h;
+}
 function draft() { return drafts[tab] || []; }
 
 function saveDrafts() {
@@ -413,28 +545,60 @@ function saveDrafts() {
 function setName(n) {
   myName = String(n || '').trim();
   store('name', myName);
-  $('who').textContent = myName ? '👤 ' + myName : '👤 Set name';
+  $('who').textContent = myName ? '👤 ' + myName : '👤';
 }
-function askName(cb) {
-  nameCb = cb || null;
-  $('nmIn').value = myName;
-  $('nmChips').innerHTML = names.slice(0, 12).map(function (n) {
-    return '<button class="chip" data-nm="' + esc(n) + '">' + esc(n) + '</button>';
-  }).join('');
-  $('nm').hidden = false;
-  setTimeout(function () { $('nmIn').focus(); }, 50);
+
+/* ---------- login (each person has their own PIN in the Staff sheet) ---------- */
+var loginName = '', seeStock = false;
+function showLogin(msg) {
+  $('login').hidden = false;
+  $('lStep1').hidden = false; $('lStep2').hidden = true;
+  $('lErr').textContent = msg || '';
+  rpcCall('staff_names', {}).then(function (list) {
+    list = list || [];
+    $('lNames').innerHTML = list.length ? list.map(function (n) { return '<button data-ln="' + esc(n) + '">' + esc(n) + '</button>'; }).join('')
+      : '<div class="hint">No staff yet — the owner adds names and PINs in the Staff sheet.</div>';
+  }, function (e) { $('lNames').innerHTML = '<div class="hint">Could not load names — ' + esc(errMsg(e)) + '</div>'; });
 }
-function nameOk(n) {
-  n = String(n || '').trim();
-  if (!n) { toast('Type your name'); $('nmIn').focus(); return; }
-  setName(n);
-  $('nm').hidden = true;
-  var cb = nameCb; nameCb = null;
-  if (cb) cb();
-  renderList();
+function pickLogin(n) {
+  loginName = n;
+  $('lWho').textContent = n;
+  $('lStep1').hidden = true; $('lStep2').hidden = false; $('lErr').textContent = '';
+  $('lPin').value = '';
+  setTimeout(function () { $('lPin').focus(); }, 50);
 }
-// run fn now if the name is known, otherwise ask once and then run it
-function withName(fn) { if (myName) fn(); else askName(fn); }
+function doLogin() {
+  var pin = $('lPin').value.trim();
+  if (!pin) { $('lErr').textContent = 'Type your PIN'; return; }
+  $('lGo').disabled = true; $('lGo').textContent = 'Checking…';
+  rpcCall('login', { p_name: loginName, p_pin: pin }).then(function (r) {
+    $('lGo').disabled = false; $('lGo').textContent = 'Log in';
+    TOKEN = r.token; store('token', TOKEN);
+    setName(r.name); setSeeStock(r.seeStock);
+    $('login').hidden = true;
+    ver = ''; poll(true);
+    toast('Welcome, ' + r.name);
+  }, function (e) {
+    $('lGo').disabled = false; $('lGo').textContent = 'Log in';
+    $('lErr').textContent = errMsg(e); $('lPin').value = ''; $('lPin').focus();
+  });
+}
+function authLost() {
+  if (!$('login').hidden) return;
+  TOKEN = ''; store('token', '');
+  showLogin('Please log in again.');
+}
+function logOut() {
+  var t = TOKEN;
+  TOKEN = ''; store('token', ''); store('lastState', ''); setName('');
+  $('me').hidden = true;
+  if (t) rpcCall('logout', { p_token: t }).then(function () {}, function () {});
+  showLogin('');
+}
+function setSeeStock(v) { seeStock = !!v; }   // stock is shown on its own link (stock.html), not in this app
+// run fn if logged in, otherwise show the login screen
+function askName(cb) { if (TOKEN) { if (cb) cb(); } else showLogin(''); }
+function withName(fn) { if (TOKEN) fn(); else showLogin(''); }
 
 /* ---------- PIN (checked by the sheet) ---------- */
 function askPin(cb) {
@@ -518,7 +682,7 @@ function editorHtml(e) {
 function saveEdit(no) {
   var ed = editing[no], e = entries[no];
   if (!ed || !e) return;
-  if (!myName) { askName(function () { saveEdit(no); }); return; }
+  if (!TOKEN) { showLogin(''); return; }
   if (ed.ai.item && ed.ai.qty) { toast('Tap Add for the new item first'); return; }
   var lines = [];
   for (var i = 0; i < ed.lines.length; i++) {
@@ -546,9 +710,11 @@ function saveEdit(no) {
 
 /* ---------- tabs ---------- */
 function setTab(t) {
+  if (t === 'STOCK') t = 'IN';
   if (t !== tab) { current = ''; draftOpen = false; flash = ''; }
   tab = t; store('tab', t);
   renderView();
+  if (t === 'STOCK') loadStock(false);
 }
 
 function renderTabs() {
@@ -556,6 +722,7 @@ function renderTabs() {
   for (var i = 0; i < bs.length; i++) {
     var t = bs[i].getAttribute('data-tab');
     bs[i].className = t === tab ? 'on' + (t === 'OUT' ? ' o' : t === 'TR' ? ' t' : '') : '';
+    if (t === 'STOCK') bs[i].hidden = !seeStock;
   }
   var list = allEntries();
   var nT = list.filter(function (e) { return e.type === TR_TYPE && !allDone(e); }).length;
@@ -577,6 +744,10 @@ function renderView() {
     else h += '<div class="card lnc"><input class="in1" id="lname" list="lnList" maxlength="40" autocomplete="off" ' +
       'placeholder="📝 List name (optional) — Raju thela, Gaadi…" value="' + esc(listNames[tab] || '') + '"></div>';
     h += '<div id="entry"></div><div id="flash"></div><div id="draftBox"></div>';
+  } else if (tab === 'STOCK') {
+    if (!stockItem) h += '<div class="fs"><input id="fq" data-fq="stock" type="search" placeholder="🔍 Find item" ' +
+      'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + esc(fqText.stock || '') + '"></div>';
+    h += '<div id="listArea"></div>';
   } else if (tab === 'TR') {
     h += '<div class="fs"><input id="fq" data-fq="tr" type="search" placeholder="🔍 Search LR no, transport, party, item" ' +
       'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + esc(fqText.tr) + '"></div><div id="listArea"></div>';
@@ -975,6 +1146,7 @@ function renderList() {
   renderTabs();
   var area = $('listArea');
   if (!area) return;
+  if (tab === 'STOCK') { renderStock(area); return; }
   var list = allEntries(), show, fq, emptyMsg;
   if (tab === 'TR') {
     show = list.filter(function (e) { return e.type === TR_TYPE && !allDone(e); });
@@ -1005,6 +1177,8 @@ function applyState(d, fromCache) {
   if (!fromCache) store('lastState', JSON.stringify(d));
   ver = fromCache ? '' : d.ver;
   if (String(d.appVer || '') !== APP_VER) { $('vlabel').textContent = '⚠ run new SQL in Supabase'; $('vlabel').style.opacity = '1'; }
+  if (d.me && !fromCache) setName(d.me);
+  if (d.seeStock !== undefined) setSeeStock(d.seeStock);
   if (d.pack) pack = d.pack;
   if (d.items) { items = d.items; buildIndex(); }
   transports = d.transports || [];
@@ -1027,7 +1201,9 @@ function applyState(d, fromCache) {
   $('trList').innerHTML = transports.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
 
   if (!loaded) { loaded = true; renderView(); }
-  else {
+  else if (tab === 'STOCK') {
+    if (!fromCache) loadStock(true);
+  } else {
     renderList();
     var m = $('trMatch');
     if (m) { var t = matchText(); m.innerHTML = t; m.hidden = !t; }
@@ -1041,6 +1217,7 @@ function applyState(d, fromCache) {
 function poll(force) {
   if (polling) return;
   if (!force && (document.hidden || saving || busyCount())) return;
+  if (!TOKEN) return;
   polling = true;
   google.script.run
     .withSuccessHandler(function (d) { polling = false; if (d) applyState(d); })
@@ -1075,7 +1252,7 @@ function serverCall(key, fnName, args, okMsg, onFail) {
 function tick(cb) {
   var on = cb.checked;
   var no = Number(cb.getAttribute('data-no')), row = Number(cb.getAttribute('data-row'));
-  if (!myName) { cb.checked = !on; askName(function () { var c = document.querySelector('input[data-row="' + row + '"]'); if (c) { c.checked = on; tick(c); } }); return; }
+  if (!TOKEN) { cb.checked = !on; showLogin(''); return; }
   var line = null;
   (entries[no] ? entries[no].lines : []).forEach(function (l) { if (l.row === row) line = l; });
   if (line) { line.checked = on; line.chkBy = on ? myName : ''; line.chkAt = ''; }
@@ -1093,6 +1270,10 @@ function submitPart(btn) {
 
 function onClick(ev) {
   var t = ev.target, b;
+
+  // stock tab
+  if ((b = t.closest('[data-sk]'))) { stockItem = b.getAttribute('data-sk'); ledger = null; renderView(); loadStock(false); return; }
+  if (t.closest('[data-act="skBack"]')) { stockItem = ''; ledger = null; renderView(); loadStock(true); return; }
 
   // sub tabs
   if ((b = t.closest('[data-trv]'))) { trView = b.getAttribute('data-trv'); current = ''; renderView(); return; }
@@ -1266,7 +1447,7 @@ function onKey(ev) {
 function doSave() {
   var d = draft();
   if (saving || !d.length) return;
-  if (!myName) { askName(doSave); return; }
+  if (!TOKEN) { showLogin(''); return; }
   if (tab === 'TR' && (!trInfo.name.trim() || !trInfo.lr.trim())) {
     trEdit = true; renderTrBox();
     toast(!trInfo.name.trim() ? 'Type the transport name' : 'Type the LR number');
@@ -1307,14 +1488,31 @@ window.onload = function () {
   try { recent = JSON.parse(store('recent') || '[]') || []; } catch (e) { recent = []; }
   try { listNames = JSON.parse(store('listNames') || 'null') || listNames; } catch (e) {}
   trEdit = !(trInfo.name.trim() && trInfo.lr.trim());
-  setName(store('name') || '');
+  TOKEN = store('token') || '';
+  setName(TOKEN ? (store('name') || '') : '');
   var st = store('tab');
   if (st === 'OUT' || st === 'TR' || st === 'LISTS') tab = st;
 
   var tabs = document.querySelectorAll('.tabs button');
   for (var i = 0; i < tabs.length; i++) tabs[i].onclick = function () { setTab(this.getAttribute('data-tab')); };
   $('save').onclick = doSave;
-  $('who').onclick = function () { askName(null); };
+  $('who').onclick = function () {
+    if (!TOKEN) { showLogin(''); return; }
+    $('meName').textContent = 'Logged in as ' + myName; $('me').hidden = false;
+  };
+  $('meOut').onclick = logOut;
+  $('meClose').onclick = function () { $('me').hidden = true; };
+  $('lNames').onclick = function (ev) { var b = ev.target.closest('[data-ln]'); if (b) pickLogin(b.getAttribute('data-ln')); };
+  $('lGo').onclick = doLogin;
+  $('lPin').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doLogin(); } };
+  $('lBack').onclick = function () { showLogin(''); };
+
+  // install as an app + open fast / work on weak signal
+  var instEvt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); instEvt = e; $('inst').hidden = false; });
+  $('inst').onclick = function () { if (instEvt) { instEvt.prompt(); instEvt = null; $('inst').hidden = true; } };
+  window.addEventListener('appinstalled', function () { $('inst').hidden = true; });
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
 
   var v = $('view');
   v.addEventListener('mousedown', function (ev) {   // keep keyboard open when tapping results / unit buttons
@@ -1339,14 +1537,9 @@ window.onload = function () {
     }
   });
 
-  $('nmOk').onclick = function () { nameOk($('nmIn').value); };
-  $('nmIn').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); nameOk(this.value); } };
-  $('nmChips').onclick = function (ev) { var c = ev.target.closest('[data-nm]'); if (c) nameOk(c.getAttribute('data-nm')); };
-  $('nm').onclick = function (ev) { if (ev.target === this && myName) { this.hidden = true; nameCb = null; } };
-
-  try { var ls = JSON.parse(store('lastState') || 'null'); if (ls) applyState(ls, true); } catch (e) {}   // open instantly with last data
+  if (TOKEN) { try { var ls = JSON.parse(store('lastState') || 'null'); if (ls) applyState(ls, true); } catch (e) {} }   // open instantly with last data
   renderView();
-  poll(true);
+  if (!TOKEN) showLogin(''); else poll(true);
   setInterval(function () { poll(false); }, 3000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(false); });
 };

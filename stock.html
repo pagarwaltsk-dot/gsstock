@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B4F47">
+<meta name="robots" content="noindex">
+<title>gsstock — Stock</title>
+<script src="config.js"></script>
+<link rel="manifest" href="stock.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root{--hdr:#0B4F47;--green:#25D366;--teal:#128C7E;--red:#d9534f;--orange:#e67e22;--bg:#E7EAE6;--text:#111;--muted:#667781}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{font-family:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);
+       height:100vh;height:100dvh;display:flex;flex-direction:column}
+  button,input{font-family:inherit}
+  .brand{font-family:"Big Shoulders Stencil Display",Impact,sans-serif;font-weight:800;letter-spacing:.05em}
+
+  header{background:var(--hdr);color:#fff;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  header .t{flex:1;font-size:22px}
+  header .t small{font-family:system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:0;opacity:.8;margin-left:6px}
+  header button{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;padding:6px 12px;font-size:13px;max-width:45%;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #inst{background:var(--green);font-weight:700}
+  #inst[hidden]{display:none}
+  main{flex:1;min-height:0;overflow-y:auto;padding:10px 10px 24px;overscroll-behavior:contain}
+  .wrap{max-width:720px;margin:0 auto}
+  .fs{position:sticky;top:-10px;padding:10px 0 8px;margin-top:-10px;background:var(--bg);z-index:2}
+  .fs input{width:100%;font-size:16px;padding:11px 14px;border:1px solid #c9cfcb;border-radius:22px;outline:none;background:#fff}
+  .fs input:focus{border-color:var(--teal)}
+  .empty{text-align:center;color:var(--muted);font-size:14px;margin:24px 0}
+
+  .sk{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:12px;margin-bottom:6px;box-shadow:0 1px 1px rgba(0,0,0,.06);cursor:pointer}
+  .sk:active{background:#f2faf7}
+  .sk .nm{flex:1;min-width:0;font-size:15px}
+  .sk .nm small{display:block;color:var(--orange);font-size:12px}
+  .sk .q{font-weight:700;font-size:15px;text-align:right;white-space:nowrap}
+  .neg{color:var(--red) !important}
+  .of{font-size:.72em;font-weight:400;color:#8a9592;white-space:nowrap}
+
+  .lhead{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .lhead .back{border:0;background:none;color:var(--teal);font-weight:700;font-size:14px;padding:0 0 8px}
+  .lhead h3{margin:0 0 6px;font-size:18px}
+  .lhead .now{font-size:26px;font-weight:800;color:var(--hdr)}
+  .lhead .sub2{font-size:13px;color:var(--muted);margin-top:2px}
+  .lhead .trn{margin-top:10px;padding-top:8px;border-top:1px dashed #e3e3e3;font-size:13px;color:#7a4a10}
+  .lhead .warn{margin-top:8px;font-size:12px;color:var(--red)}
+  .lg{display:flex;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+  .lg .d{flex:1;min-width:0}
+  .lg .d b{font-size:14px}
+  .lg .d small{display:block;color:var(--muted);font-size:12px}
+  .lg .d .li{font-size:13px;color:#333}
+  .lg .m{text-align:right;white-space:nowrap}
+  .lg .mv{font-weight:800;font-size:15px}
+  .lg .mv.in{color:var(--teal)}.lg .mv.out{color:var(--red)}
+  .lg .bal{font-size:12px;color:var(--muted);margin-top:2px}
+  .lg.op{background:#f7faf9;border:1px dashed #cfe5df;box-shadow:none}
+
+  .login{position:fixed;inset:0;background:var(--hdr);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+  .login[hidden]{display:none}
+  .lbox{width:100%;max-width:380px;color:#fff}
+  .lbrand{font-size:56px;line-height:1}
+  .lsub{font-size:16px;opacity:.85;margin:4px 0 22px}
+  .lq{font-size:18px;margin:0 0 12px}
+  .lnames{display:flex;flex-wrap:wrap;gap:8px}
+  .lnames button{border:0;background:#fff;color:var(--hdr);font-weight:700;font-size:17px;border-radius:12px;padding:13px 18px}
+  .lnames .hint{color:rgba(255,255,255,.8)}
+  .in1{width:100%;font-size:24px;text-align:center;letter-spacing:.3em;padding:11px 12px;border:0;border-radius:10px;outline:none}
+  .ok{width:100%;margin-top:12px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:16px;padding:13px}
+  .lback{background:none;border:0;color:rgba(255,255,255,.85);text-decoration:underline;font-size:14px;margin-top:14px;padding:6px 0}
+  .lerr{min-height:22px;margin-top:12px;color:#ffd2cf;font-weight:600}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+  .modal[hidden]{display:none}
+  .mbox{background:#fff;border-radius:14px;padding:16px;width:100%;max-width:340px}
+  .mbox .hint{font-size:13px;color:var(--muted);margin:4px 0 6px}
+  .mbox .ok.red{background:var(--red)}
+  .mbox .ok.grey{background:#eee;color:#555;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="t"><span class="brand">GSSTOCK</span><small>Stock</small></div>
+  <button id="inst" hidden>⤓ Install</button>
+  <button id="who">👤</button>
+</header>
+<main><div class="wrap" id="view"></div></main>
+
+<div class="login" id="login" hidden>
+  <div class="lbox">
+    <div class="lbrand brand">GSSTOCK</div>
+    <div class="lsub">Stock view</div>
+    <div id="lStep1">
+      <p class="lq">Who are you?</p>
+      <div class="lnames" id="lNames"><div class="hint">Loading names…</div></div>
+    </div>
+    <div id="lStep2" hidden>
+      <p class="lq">Hi <b id="lWho"></b>, type your PIN</p>
+      <input class="in1" id="lPin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+      <button class="ok" id="lGo">Log in</button>
+      <button class="lback" id="lBack">Not you? Choose another name</button>
+    </div>
+    <div class="lerr" id="lErr"></div>
+  </div>
+</div>
+<div class="modal" id="me" hidden>
+  <div class="mbox">
+    <b id="meName"></b>
+    <div class="hint">Stock view</div>
+    <button class="ok red" id="meOut">Log out</button>
+    <button class="ok grey" id="meClose">Close</button>
+  </div>
+</div>
+
+<script>
+/* ---------- connection (same Supabase as the entry app, settings in config.js) ---------- */
+var CFG = window.STOCK_CONFIG || {};
+function cleanUrl(u) {
+  u = String(u || '').trim();
+  var dash = u.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  if (dash) return 'https://' + dash[1].toLowerCase() + '.supabase.co';
+  if (/^[a-z0-9]{15,30}$/i.test(u)) return 'https://' + u.toLowerCase() + '.supabase.co';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  var m = u.match(/^(https?:\/\/[^\/?#\s]+)/i);
+  return m ? m[1] : '';
+}
+function rpc(fn, body) {
+  var key = String(CFG.key || '').trim(), url = cleanUrl(CFG.url);
+  if (!url || !key || /PASTE/i.test(url + key)) return Promise.reject({ message: 'Not set up — fill config.js with your Supabase URL and key' });
+  var headers = { 'Content-Type': 'application/json', 'apikey': key };
+  if (/^eyJ/.test(key)) headers.Authorization = 'Bearer ' + key;
+  return fetch(url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+    .then(function (res) {
+      return res.text().then(function (txt) {
+        var j = null;
+        try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+        if (!res.ok) throw { message: (j && (j.message || j.hint)) || ('Server error ' + res.status) };
+        if (j && j.__auth) { authLost(); throw { message: j.__auth }; }
+        if (j && j.__error) throw { message: j.__error };
+        return j;
+      });
+    }, function () { throw { message: 'no signal' }; });
+}
+
+/* ---------- helpers ---------- */
+function $(id) { return document.getElementById(id); }
+function store(k, v) {
+  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {}
+  return null;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+}
+function fmt(n) { return String(Math.round(Number(n) * 1000) / 1000); }
+function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function errMsg(e) { return e && e.message ? e.message : 'no signal'; }
+
+var UNITS = ['Bag', 'Mini', 'Loose'], pack = {};
+function factor(item, unit) {
+  if (unit === UNITS[2]) return 1;
+  var p = pack[item] || [0, 0];
+  return unit === UNITS[0] ? (p[0] || 0) : (unit === UNITS[1] ? (p[1] || 0) : 0);
+}
+function unitText(item, unit) {
+  var p = pack[item] || [];
+  if (unit === UNITS[0]) return p[5] || 'Bag';
+  if (unit === UNITS[1]) return p[6] || 'Mini';
+  return p[2] || 'Loose';
+}
+function baseText(item) { var p = pack[item]; return (p && p[2]) || 'Loose'; }
+function unitHtml(item, unit) {
+  var f = factor(item, unit);
+  return esc(unitText(item, unit)) + (unit !== UNITS[2] && f ? ' <span class="of">(of ' + fmt(f) + ' ' + esc(baseText(item)) + ')</span>' : '');
+}
+// pieces → "2 BORA + 5 KG"
+function packText(item, pcs) {
+  pcs = Math.round(Number(pcs) * 1000) / 1000;
+  var neg = pcs < 0, t = Math.abs(pcs), parts = [];
+  [UNITS[0], UNITS[1]].forEach(function (u) {
+    var f = factor(item, u);
+    if (f > 0 && t + 1e-9 >= f) { var k = Math.floor((t + 1e-9) / f); parts.push(k + ' ' + unitText(item, u)); t = Math.round((t - k * f) * 1000) / 1000; }
+  });
+  if (t || !parts.length) parts.push(fmt(t) + ' ' + baseText(item));
+  return (neg ? '−' : '') + parts.join(' + ');
+}
+
+/* ---------- login (Staff sheet: only people with "Can see stock = Yes") ---------- */
+var TOKEN = '', myName = '', loginName = '';
+function showLogin(msg) {
+  $('login').hidden = false; $('lStep1').hidden = false; $('lStep2').hidden = true;
+  $('lErr').textContent = msg || '';
+  rpc('staff_names', {}).then(function (list) {
+    list = list || [];
+    $('lNames').innerHTML = list.length ? list.map(function (n) { return '<button data-ln="' + esc(n) + '">' + esc(n) + '</button>'; }).join('')
+      : '<div class="hint">No staff yet — add names and PINs in the Staff sheet.</div>';
+  }, function (e) { $('lNames').innerHTML = '<div class="hint">Could not load names — ' + esc(errMsg(e)) + '</div>'; });
+}
+function pickLogin(n) {
+  loginName = n; $('lWho').textContent = n;
+  $('lStep1').hidden = true; $('lStep2').hidden = false; $('lErr').textContent = ''; $('lPin').value = '';
+  setTimeout(function () { $('lPin').focus(); }, 50);
+}
+function doLogin() {
+  var pin = $('lPin').value.trim();
+  if (!pin) { $('lErr').textContent = 'Type your PIN'; return; }
+  $('lGo').disabled = true; $('lGo').textContent = 'Checking…';
+  rpc('login', { p_name: loginName, p_pin: pin }).then(function (r) {
+    $('lGo').disabled = false; $('lGo').textContent = 'Log in';
+    if (!r.seeStock) {
+      rpc('logout', { p_token: r.token }).then(function () {}, function () {});
+      $('lErr').textContent = 'You don\'t have access to stock. Ask the owner to set "Can see stock" to Yes.';
+      return;
+    }
+    TOKEN = r.token; store('stockToken', TOKEN); setName(r.name);
+    $('login').hidden = true;
+    ver = ''; refresh(true);
+  }, function (e) {
+    $('lGo').disabled = false; $('lGo').textContent = 'Log in';
+    $('lErr').textContent = errMsg(e); $('lPin').value = ''; $('lPin').focus();
+  });
+}
+function setName(n) { myName = n || ''; store('stockName', myName); $('who').textContent = myName ? '👤 ' + myName : '👤'; }
+function authLost() {
+  if (!$('login').hidden) return;
+  TOKEN = ''; store('stockToken', ''); showLogin('Please log in again.');
+}
+function logOut() {
+  var t = TOKEN; TOKEN = ''; store('stockToken', ''); setName(''); $('me').hidden = true;
+  rows = null; ledger = null; item = ''; render();
+  if (t) rpc('logout', { p_token: t }).then(function () {}, function () {});
+  showLogin('');
+}
+
+/* ---------- data ---------- */
+var ver = '', rows = null, item = '', ledger = null, q = '', busy = false;
+function refresh(force) {
+  if (!TOKEN || busy || (!force && document.hidden)) return;
+  busy = true;
+  // get_state tells us packing + whether anything changed (null = nothing new)
+  rpc('get_state', { p_token: TOKEN, p_ver: force ? '' : ver }).then(function (d) {
+    if (!d) { busy = false; return; }
+    ver = d.ver; pack = d.pack || pack; if (d.units) UNITS = d.units;
+    if (d.seeStock === false) { busy = false; logOut(); $('lErr').textContent = 'Your stock access was turned off.'; return; }
+    var job = item ? rpc('item_ledger', { p_token: TOKEN, p_item: item }) : rpc('stock_list', { p_token: TOKEN });
+    return job.then(function (r) { if (item) ledger = r; else rows = r || []; busy = false; render(); });
+  }).catch(function (e) {
+    busy = false;
+    if (!rows && !ledger) $('view').innerHTML = '<div class="empty">' + esc(errMsg(e)) + '</div>';
+  });
+}
+
+/* ---------- screens ---------- */
+function render() {
+  if (item) { renderLedger(); return; }
+  var v = $('view');
+  if (!$('q')) {
+    v.innerHTML = '<div class="fs"><input id="q" type="search" placeholder="🔍 Find item" autocomplete="off" autocorrect="off" ' +
+      'autocapitalize="off" spellcheck="false"></div><div id="list"></div>';
+    $('q').value = q;
+    $('q').oninput = function () { q = this.value; renderList(); };
+  }
+  renderList();
+}
+function renderList() {
+  var box = $('list');
+  if (!box) return;
+  if (!rows) { box.innerHTML = '<div class="empty">Loading stock…</div>'; return; }
+  var toks = norm(q) ? norm(q).split(' ') : [];
+  var show = rows.filter(function (r) {
+    if (!toks.length) return true;
+    var p = pack[r[0]] || [], t = norm(r[0] + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return t.indexOf(k) >= 0; });
+  });
+  box.innerHTML = show.length ? show.slice(0, 200).map(function (r) {
+    return '<div class="sk" data-sk="' + esc(r[0]) + '"><div class="nm">' + esc(r[0]) +
+      (r[2] ? '<small>🚚 ' + esc(packText(r[0], r[2])) + ' on the way</small>' : '') + '</div>' +
+      '<div class="q' + (r[1] < 0 ? ' neg' : '') + '">' + esc(packText(r[0], r[1])) + '</div></div>';
+  }).join('') + (show.length > 200 ? '<div class="empty">Type to find more items</div>' : '') : '<div class="empty">No item matches</div>';
+}
+function renderLedger() {
+  var L = ledger, v = $('view');
+  var h = '<div class="lhead"><button class="back" data-back="1">‹ All items</button><h3>' + esc(item) + '</h3>';
+  if (!L || String(L.item).toLowerCase() !== item.toLowerCase()) { v.innerHTML = h + '<div class="sub2">Loading…</div></div>'; return; }
+  var packed = UNITS.some(function (u) { return u !== UNITS[2] && factor(item, u); });
+  h += '<div class="now' + (L.total < 0 ? ' neg' : '') + '">' + esc(packText(item, L.total)) + '</div>' +
+    '<div class="sub2">in stock now' + (packed ? ' (= ' + fmt(L.total) + ' ' + esc(baseText(item)) + ')' : '') + '</div>';
+  if (L.pending && L.pending.length) {
+    h += '<div class="trn">🚚 On the way: ' + L.pending.map(function (p) {
+      return '<b>' + fmt(p.qty) + ' ' + unitHtml(item, p.unit) + '</b> — ' + esc(p.list);
+    }).join('<br>') + '</div>';
+  }
+  if (L.bad) h += '<div class="warn">Not counted: ' + esc(L.bad) + ' — fill packing in the Items sheet</div>';
+  h += '</div>';
+  h += (L.rows || []).map(function (r) {
+    var cls = r.kind === 'OUT' ? 'out' : 'in';
+    var word = r.kind === 'OUT' ? 'OUT' : (r.kind === 'RECEIVED' ? 'IN 🚚' : 'IN');
+    return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
+      '<div class="li">(' + esc(r.list) + ')</div></div>' +
+      '<div class="m"><div class="mv ' + cls + '">' + fmt(r.qty) + ' ' + unitHtml(item, r.unit) + ' ' + word + '</div>' +
+      '<div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' + esc(packText(item, r.bal)) + '</div></div></div>';
+  }).join('');
+  if (!(L.rows || []).length) h += '<div class="empty">No movement yet</div>';
+  h += '<div class="lg op"><div class="d"><b>Opening balance</b><small>from the Items sheet</small></div>' +
+    '<div class="m"><div class="mv">' + esc(packText(item, L.opening)) + '</div></div></div>';
+  v.innerHTML = h;
+}
+function openItem(n) { item = n; ledger = null; renderLedger(); $('view').parentNode.scrollTop = 0; busy = false; refresh(true); }
+function back() { item = ''; ledger = null; $('view').innerHTML = ''; render(); busy = false; refresh(true); }
+
+/* ---------- start ---------- */
+window.onload = function () {
+  $('view').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-sk]');
+    if (b) { openItem(b.getAttribute('data-sk')); return; }
+    if (ev.target.closest('[data-back]')) back();
+  });
+  window.addEventListener('popstate', function () { if (item) back(); });
+  $('lNames').onclick = function (ev) { var b = ev.target.closest('[data-ln]'); if (b) pickLogin(b.getAttribute('data-ln')); };
+  $('lGo').onclick = doLogin;
+  $('lPin').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doLogin(); } };
+  $('lBack').onclick = function () { showLogin(''); };
+  $('who').onclick = function () { if (!TOKEN) return; $('meName').textContent = 'Logged in as ' + myName; $('me').hidden = false; };
+  $('meOut').onclick = logOut;
+  $('meClose').onclick = function () { $('me').hidden = true; };
+
+  var instEvt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); instEvt = e; $('inst').hidden = false; });
+  $('inst').onclick = function () { if (instEvt) { instEvt.prompt(); instEvt = null; $('inst').hidden = true; } };
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('sw.js'); } catch (e) {} }
+
+  TOKEN = store('stockToken') || '';
+  setName(TOKEN ? store('stockName') : '');
+  render();
+  if (!TOKEN) showLogin(''); else refresh(true);
+  setInterval(function () { refresh(false); }, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(false); });
+};
+</script>
+</body>
+</html>
