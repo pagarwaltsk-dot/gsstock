@@ -72,6 +72,8 @@
                border-bottom:3px solid transparent;position:relative}
   .tabs button.on{color:#fff;border-bottom-color:#fff}
   .tabs button.on.o{border-bottom-color:#ff9c96}
+  .tabs button[data-tab="OUT"]{flex-grow:1.3;font-size:15px}
+  .tabs button[data-tab="IN"]{flex-grow:.6;font-size:12px;font-weight:600;color:rgba(255,255,255,.55)}
   .tabs button.on.t{border-bottom-color:#ffc27a}
   .bd{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--green);color:#fff;font-size:11px;line-height:18px;margin-left:3px}
   .bd:empty{display:none}
@@ -245,6 +247,20 @@
   /* save — fixed at the bottom of the page */
   footer{flex-shrink:0;padding:8px 10px;background:#f0f0f0;border-top:1px solid #ddd}
   footer[hidden]{display:none}
+  .frow{display:flex;gap:8px;align-items:center}
+  #noteBtn{flex-shrink:0;width:38px;height:38px;border:0;border-radius:50%;background:none;color:#a7b0ad;font-size:18px}
+  #noteBtn.has{color:#128C7E;background:#dff2ec}
+  #noteBox{margin-bottom:8px}
+  #noteBox textarea{width:100%;font:15px/1.35 inherit;font-family:inherit;padding:8px 10px;border:1px solid #cfcfcf;border-radius:10px;resize:none;outline:none;background:#fff}
+  #noteBox textarea:focus{border-color:#128C7E}
+  .dn{flex-shrink:0;border:0;background:none;color:#a7b0ad;font-size:16px;width:30px;height:30px;border-radius:50%}
+  .dn.has{color:#128C7E;background:#dff2ec}
+  .dln{width:100%;margin:0 0 6px;font-size:14px;padding:7px 10px;border:1px solid #cfe5df;border-radius:8px;outline:none;background:#fbfdfc}
+  .inote{display:block;font-size:12px;color:#7d8784;font-style:italic;margin-top:1px}
+  .fn{border:0;background:none;color:#128C7E;font-size:14px;margin-left:6px;padding:0 4px}
+  .er .enin{flex-basis:100%;font-size:13px;padding:6px 8px;margin-top:-2px}
+  .er{flex-wrap:wrap}
+  .enote{font-size:12px;color:#7d8784;margin-top:3px;font-style:italic;white-space:pre-wrap}
   #save{width:100%;border:0;border-radius:24px;padding:14px;font-size:16px;font-weight:700;color:#fff;background:var(--green)}
   #save.o{background:var(--red)}
   #save.t{background:var(--orange)}
@@ -265,20 +281,23 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v12</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v14</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="who">👤</button>
 </header>
 <div class="tabs" id="tabs">
-  <button data-tab="IN">IN</button>
   <button data-tab="OUT">OUT</button>
   <button data-tab="TR">Transport<span class="bd" id="bT"></span></button>
   <button data-tab="LISTS">Activity<span class="bd" id="bL"></span></button>
+  <button data-tab="IN" class="minor">IN</button>
 </div>
 
 <main id="view"></main>
 
-<footer id="foot"><button id="save" disabled>Save</button></footer>
+<footer id="foot">
+  <div id="noteBox" hidden><textarea id="noteIn" maxlength="300" rows="2" placeholder="Note for this list (optional)"></textarea></div>
+  <div class="frow"><button id="noteBtn" title="Add a note" aria-label="Add a note">✎</button><button id="save" disabled>Save</button></div>
+</footer>
 
 <!-- login: every staff member has their own PIN (Staff sheet) -->
 <div class="login" id="login" hidden>
@@ -312,6 +331,14 @@
     <input class="in1" id="pmIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
     <button class="ok" id="pmOk">OK</button>
     <button class="ok" id="pmNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
+  </div>
+</div>
+<div class="modal" id="leave" hidden>
+  <div class="mbox">
+    <b>Leave gsstock?</b>
+    <div class="hint" id="leaveHint">You pressed Back.</div>
+    <button class="ok" id="leaveStay">Stay</button>
+    <button class="ok" id="leaveGo" style="background:#eee;color:#555;margin-top:6px">Leave</button>
   </div>
 </div>
 <div id="toast"></div>
@@ -380,15 +407,16 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '12';
+var APP_VER = '14';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
-var tab = 'IN', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '', stock: '' };
+var tab = 'OUT', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '', stock: '' };
 var drafts = { IN: [], OUT: [], TR: [] }, uids = { IN: '', OUT: '', TR: '' };
 var current = '', draftOpen = false, flash = '';
 var trInfo = { name: '', lr: '', from: '' }, trEdit = true;
 var saving = false, loaded = false, polling = false, myName = '', nameCb = null;
+var notes = { IN: '', OUT: '', TR: '' }, noteLine = -1, lastAdded = -1;
 var editing = {}, pinCb = null, pinMem = '', pinAt = 0;
 var entries = {}, ver = '', openNos = {}, busy = {}, partOpen = {}, undoArm = {}, editOpen = {}, seenNos = null;
 
@@ -454,7 +482,8 @@ function pcsText(item, qty, unit) {
 }
 function errMsg(e) { return e && e.message ? e.message : 'no signal'; }
 function toast(msg) {
-  var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  var t = $('toast'), f = $('foot'); t.textContent = msg; t.style.display = 'block';
+  t.style.bottom = ((f && !f.hidden ? f.offsetHeight : 0) + 14) + 'px';   // always above the bottom bar
   clearTimeout(toast.h); toast.h = setTimeout(function () { t.style.display = 'none'; }, 3000);
 }
 function newUid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -641,8 +670,9 @@ function startEdit(no, pin) {
   var e = entries[no];
   if (!e) return;
   editing[no] = {
-    pin: pin, lname: e.lname || '', name: e.transport, lr: e.lr, from: e.from,
-    lines: e.lines.map(function (l) { return { row: l.row, item: l.item, qty: l.qty, unit: l.unit, recd: l.recd || 0, oq: l.qty, ou: l.unit, del: false }; }),
+    pin: pin, lname: e.lname || '', name: e.transport, lr: e.lr, from: e.from, note: e.note || '',
+    lines: e.lines.map(function (l) { return { row: l.row, item: l.item, qty: l.qty, unit: l.unit, recd: l.recd || 0, oq: l.qty, ou: l.unit, del: false,
+                                               note: l.note || '', on: l.note || '' }; }),
     add: [], ai: { item: '', qty: '', unit: UNITS[0] }
   };
   openNos[no] = true;
@@ -658,6 +688,7 @@ function editorHtml(e) {
   } else {
     h += '<input class="full" data-ek="lname" data-no="' + e.no + '" list="lnList" maxlength="40" placeholder="List name (optional)" value="' + esc(ed.lname) + '">';
   }
+  h += '<input class="full" data-ek="note" data-no="' + e.no + '" maxlength="300" placeholder="✎ Note (optional)" value="' + esc(ed.note) + '">';
   h += '<div style="margin-top:6px">';
   ed.lines.forEach(function (l, i) {
     if (l.del) return;
@@ -665,7 +696,8 @@ function editorHtml(e) {
     h += '<div class="er"><div class="nm"><b>' + esc(l.item) + '</b>' + (locked ? '<small>' + fmt(l.recd) + ' received</small>' : '') + '</div>' +
       '<input type="number" inputmode="decimal" min="0" step="any" data-eq="' + i + '" data-no="' + e.no + '" value="' + fmt(l.qty) + '">' +
       '<select data-eu="' + i + '" data-no="' + e.no + '"' + (locked ? ' disabled' : '') + '>' + unitOpts(l.item, l.unit) + '</select>' +
-      (locked ? '<span style="width:30px"></span>' : '<button class="x" data-edel="' + i + '" data-no="' + e.no + '">✕</button>') + '</div>';
+      (locked ? '<span style="width:30px"></span>' : '<button class="x" data-edel="' + i + '" data-no="' + e.no + '">✕</button>') +
+      '<input class="enin" data-en="' + i + '" data-no="' + e.no + '" maxlength="200" placeholder="✎ note for this item" value="' + esc(l.note || '') + '">' + '</div>';
   });
   ed.add.forEach(function (l, i) {
     h += '<div class="er new"><div class="nm"><b>+ ' + esc(l.item) + '</b></div><span>' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) + '</span>' +
@@ -689,11 +721,18 @@ function saveEdit(no) {
     var l = ed.lines[i];
     if (l.del) { lines.push({ row: l.row, del: true }); continue; }
     if (!(Number(l.qty) > 0)) { toast('Wrong quantity for ' + l.item); return; }
-    if (Number(l.qty) !== l.oq || l.unit !== l.ou) lines.push({ row: l.row, qty: Number(l.qty), unit: l.unit });
+    var chgQ = Number(l.qty) !== l.oq || l.unit !== l.ou, chgN = String(l.note || '').trim() !== String(l.on || '').trim();
+    if (chgQ || chgN) {
+      var ln = { row: l.row };
+      if (chgQ) { ln.qty = Number(l.qty); ln.unit = l.unit; }
+      if (chgN) ln.note = l.note || '';
+      lines.push(ln);
+    }
   }
   var ch = { lines: lines, add: ed.add.map(function (a) { return { item: a.item, qty: a.qty, unit: a.unit }; }) };
   if (e.type === TR_TYPE) ch.transport = { name: ed.name, lr: ed.lr, from: ed.from };
   else ch.lname = ed.lname;
+  ch.note = ed.note;
   busy['ed' + no] = true; renderList();
   google.script.run
     .withSuccessHandler(function (ne) {
@@ -710,7 +749,7 @@ function saveEdit(no) {
 
 /* ---------- tabs ---------- */
 function setTab(t) {
-  if (t === 'STOCK') t = 'IN';
+  if (t === 'STOCK') t = 'OUT';
   if (t !== tab) { current = ''; draftOpen = false; flash = ''; }
   tab = t; store('tab', t);
   renderView();
@@ -722,6 +761,7 @@ function renderTabs() {
   for (var i = 0; i < bs.length; i++) {
     var t = bs[i].getAttribute('data-tab');
     bs[i].className = t === tab ? 'on' + (t === 'OUT' ? ' o' : t === 'TR' ? ' t' : '') : '';
+    if (t === 'IN') bs[i].classList.add('minor');
     if (t === 'STOCK') bs[i].hidden = !seeStock;
   }
   var list = allEntries();
@@ -777,6 +817,10 @@ function updateSave() {
   var n = draft().length;
   b.disabled = !n || saving;
   b.className = tab === 'OUT' ? 'o' : (tab === 'TR' ? 't' : '');
+  if (notes[tab] !== undefined) {
+    $('noteBtn').classList.toggle('has', !!String(notes[tab] || '').trim());
+    if ($('noteIn').value !== notes[tab] && document.activeElement !== $('noteIn')) $('noteIn').value = notes[tab] || '';
+  }
   var label = tab === 'OUT' ? 'Save Stock OUT' : (tab === 'TR' ? 'Save 🚚 Transport' : 'Save Stock IN');
   b.textContent = saving ? 'Saving…' : label + (n ? ' (' + n + ' item' + (n > 1 ? 's' : '') + ')' : '');
 }
@@ -966,7 +1010,8 @@ function addLine(unit, qtyGiven) {
   var d = draft(), found = null;
   for (var i = 0; i < d.length; i++) if (d[i].item === current && d[i].unit === unit) found = d[i];
   if (found) found.qty = Math.round((found.qty + q) * 1000) / 1000;
-  else d.push({ item: current, qty: q, unit: unit });
+  else d.push({ item: current, qty: q, unit: unit, note: '' });
+  lastAdded = found ? d.indexOf(found) : d.length - 1;
 
   recent = [current].concat(recent.filter(function (n) { return n !== current; })).slice(0, 12);
   store('recent', JSON.stringify(recent));
@@ -980,7 +1025,8 @@ function addLine(unit, qtyGiven) {
 
 function renderFlash() {
   var f = $('flash');
-  if (f) f.innerHTML = flash ? '<div class="flash"><span>' + esc(flash) + '</span></div>' : '';
+  if (f) f.innerHTML = flash ? '<div class="flash"><span>' + esc(flash) +
+    (lastAdded >= 0 ? '<button class="fn" data-act="fnote" title="Note for this item">✎</button>' : '') + '</span></div>' : '';
 }
 
 /* ---------- this list (collapsed until tapped) ---------- */
@@ -996,8 +1042,12 @@ function renderDraft() {
     '<span>' + (draftOpen ? 'Hide ▴' : 'Show ▾') + '</span></button>';
   if (draftOpen) {
     h += '<div class="dlist">' + d.map(function (l, i) {
+      var nt = String(l.note || '');
       return '<div class="dl"><span><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) +
-        '</span><button class="x" data-del="' + i + '">✕</button></div>';
+        (nt && noteLine !== i ? '<span class="inote">📝 ' + esc(nt) + '</span>' : '') +
+        '</span><button class="dn' + (nt ? ' has' : '') + '" data-dn="' + i + '" title="Note for this item">✎</button>' +
+        '<button class="x" data-del="' + i + '">✕</button></div>' +
+        (noteLine === i ? '<input class="dln" data-dln="' + i + '" maxlength="200" placeholder="Note for ' + esc(l.item) + '" value="' + esc(nt) + '">' : '');
     }).join('') + '</div>';
   }
   box.innerHTML = h;
@@ -1017,7 +1067,8 @@ function allDone(e) {
 
 function trLineHtml(e, l) {
   var recd = l.recd || 0, full = recd >= l.qty, rem = Math.round((l.qty - recd) * 1000) / 1000;
-  var h = '<div class="tl' + (full ? ' full' : '') + '"><div class="tn"><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) + '</div>';
+  var h = '<div class="tl' + (full ? ' full' : '') + '"><div class="tn"><b>' + esc(l.item) + '</b> — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) + '</div>' +
+    (l.note ? '<span class="inote">📝 ' + esc(l.note) + '</span>' : '');
   if (recd > 0 && !full) h += '<small class="part">Received ' + fmt(recd) + ' of ' + fmt(l.qty) + ' · ' + fmt(rem) + ' still pending</small>';
   if (l.rlog) h += '<small>✓ ' + esc(l.rlog) + '</small>';
   if (!full) {
@@ -1054,6 +1105,7 @@ function entryHtml(e, forceOpen) {
       ' · ' + n + ' item' + (n > 1 ? 's' : '') +
       '<span class="cnt">' + done + '/' + n + ' ✓</span><span class="arr">' + (isOpen ? '▾' : '▸') + '</span></div>';
   }
+  if (e.note) h += '<div class="enote">📝 ' + esc(e.note) + '</div>';
 
   h += '<div class="el"' + (isOpen ? '' : ' hidden') + '>';
   if (isTR) {
@@ -1076,6 +1128,7 @@ function entryHtml(e, forceOpen) {
       h += '<label class="ck"><input type="checkbox" data-no="' + e.no + '" data-row="' + l.row + '"' +
         (l.checked ? ' checked' : '') + (busy[l.row] ? ' disabled' : '') + '>' +
         '<span class="lt">' + esc(l.item) + ' — ' + fmt(l.qty) + ' ' + unitHtml(l.item, l.unit) +
+        (l.note ? '<span class="inote">📝 ' + esc(l.note) + '</span>' : '') +
         (l.checked && l.chkBy ? '<small>✓ ' + esc(l.chkBy) + (l.chkAt ? ', ' + esc(l.chkAt) : '') + '</small>' : '') +
         '</span></label>';
     });
@@ -1173,10 +1226,18 @@ function renderList() {
 }
 
 /* ---------- data from the sheet ---------- */
+// app (this file) and Supabase (the SQL) must be the same version
+function checkVersion(server) {
+  var lab = $('vlabel'), sv = Number(server) || 0, av = Number(APP_VER);
+  if (sv === av) { lab.textContent = 'v' + APP_VER; lab.style.opacity = ''; lab.title = ''; return; }
+  lab.textContent = sv < av ? '⚠ run new SQL in Supabase' : '⚠ upload new app.html';
+  lab.title = 'App v' + APP_VER + ', Supabase v' + (sv || '?');
+  lab.style.opacity = '1';
+}
 function applyState(d, fromCache) {
   if (!fromCache) store('lastState', JSON.stringify(d));
   ver = fromCache ? '' : d.ver;
-  if (String(d.appVer || '') !== APP_VER) { $('vlabel').textContent = '⚠ run new SQL in Supabase'; $('vlabel').style.opacity = '1'; }
+  if (!fromCache) checkVersion(d.appVer);   // data saved on the phone may be from before an update — only check fresh data
   if (d.me && !fromCache) setName(d.me);
   if (d.seeStock !== undefined) setSeeStock(d.seeStock);
   if (d.pack) pack = d.pack;
@@ -1284,7 +1345,14 @@ function onClick(ev) {
   if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
   if ((b = t.closest('[data-pick]'))) { choose(Number(b.getAttribute('data-pick')), Number(b.getAttribute('data-q') || 0)); return; }
   if ((b = t.closest('.u'))) { addLine(b.getAttribute('data-u')); return; }
+  if ((b = t.closest('[data-dn]'))) {
+    var di = Number(b.getAttribute('data-dn'));
+    noteLine = noteLine === di ? -1 : di; renderDraft();
+    var inp = document.querySelector('[data-dln="' + di + '"]'); if (inp) inp.focus();
+    return;
+  }
   if ((b = t.closest('[data-del]'))) {
+    noteLine = -1; lastAdded = -1;
     draft().splice(Number(b.getAttribute('data-del')), 1);
     saveDrafts(); renderDraft(); updateSave();
     return;
@@ -1292,7 +1360,13 @@ function onClick(ev) {
   if ((b = t.closest('[data-act]'))) {
     var a = b.getAttribute('data-act');
     if (a === 'chg') { current = ''; renderEntry(); $('srch').focus(); }
-    else if (a === 'dtoggle') { draftOpen = !draftOpen; renderDraft(); }
+    else if (a === 'dtoggle') { draftOpen = !draftOpen; noteLine = -1; renderDraft(); }
+    else if (a === 'fnote') {                                  // ✎ on "Atta — 2 BORA added" → note for that item
+      if (lastAdded >= 0 && lastAdded < draft().length) {
+        draftOpen = true; noteLine = lastAdded; renderDraft();
+        var ni = document.querySelector('[data-dln="' + lastAdded + '"]'); if (ni) { ni.focus(); ni.scrollIntoView({ block: 'center' }); }
+      }
+    }
     else if (a === 'trEdit') { trEdit = true; renderTrBox(); $('trName').focus(); }
     else if (a === 'trDone') trDone();
     return;
@@ -1410,6 +1484,12 @@ function onInput(ev) {
     return;
   }
   if (t.hasAttribute('data-ek')) { var e1 = editing[Number(t.getAttribute('data-no'))]; if (e1) e1[t.getAttribute('data-ek')] = t.value; return; }
+  if (t.hasAttribute('data-dln')) {
+    var dl = draft()[Number(t.getAttribute('data-dln'))];
+    if (dl) { dl.note = t.value; saveDrafts(); var btn = t.previousElementSibling && t.previousElementSibling.querySelector('.dn'); if (btn) btn.classList.toggle('has', !!t.value.trim()); }
+    return;
+  }
+  if (t.hasAttribute('data-en')) { var e6 = editing[Number(t.getAttribute('data-no'))]; if (e6) e6.lines[Number(t.getAttribute('data-en'))].note = t.value; return; }
   if (t.hasAttribute('data-eq')) { var e2 = editing[Number(t.getAttribute('data-no'))]; if (e2) e2.lines[Number(t.getAttribute('data-eq'))].qty = t.value; return; }
   if (t.hasAttribute('data-ai')) {
     var e3 = editing[Number(t.getAttribute('data-no'))];
@@ -1432,6 +1512,7 @@ function onInput(ev) {
 function onKey(ev) {
   if (ev.key !== 'Enter') return;
   var t = ev.target;
+  if (t.hasAttribute('data-dln')) { ev.preventDefault(); noteLine = -1; renderDraft(); var sr = $('srch'); if (sr) sr.focus(); return; }
   if (t.id === 'srch') { ev.preventDefault(); if (lastPick.length) choose(lastPick[0], lastQty); }
   else if (t.id === 'trName') { ev.preventDefault(); $('trLr').focus(); }
   else if (t.id === 'trLr') { ev.preventDefault(); $('trFrom').focus(); }
@@ -1457,13 +1538,14 @@ function doSave() {
   var m = tab;
   saving = true; updateSave();
   var payload = { type: m, by: myName, uid: uids[m], lines: d, transport: m === 'TR' ? trInfo : null,
-                  listName: m === 'TR' ? '' : (listNames[m] || '') };
+                  listName: m === 'TR' ? '' : (listNames[m] || ''), note: notes[m] || '' };
   google.script.run
     .withSuccessHandler(function (e) {
       saving = false;
       drafts[m] = []; saveDrafts();
       if (m === 'TR') { trInfo = { name: '', lr: '', from: '' }; trEdit = true; store('trInfo', JSON.stringify(trInfo)); }
       else { listNames[m] = ''; store('listNames', JSON.stringify(listNames)); }
+      notes[m] = ''; store('notes', JSON.stringify(notes)); noteLine = -1; lastAdded = -1; $('noteIn').value = ''; $('noteBox').hidden = true;
       poll(true);   // refresh Activity
       entries[e.no] = e;
       if (!seenNos) seenNos = {};
@@ -1480,6 +1562,25 @@ function doSave() {
     .saveEntry(payload);
 }
 
+/* ---------- Back button: close what is open, otherwise ask before leaving ---------- */
+var leaving = false;
+function armBack() { try { history.pushState({ gs: Date.now() }, ''); } catch (e) {} }
+function onBack() {
+  if (leaving) return;
+  var shut = function (id) { var m = $(id); if (m && !m.hidden) { m.hidden = true; return true; } return false; };
+  var handled = shut('leave') || shut('pm') || shut('me');
+  if (!handled && Object.keys(editing).length) { editing = {}; renderList(); handled = true; }
+  if (!handled && Object.keys(partOpen).length) { partOpen = {}; renderList(); handled = true; }
+  if (!handled && !$('noteBox').hidden) { $('noteBox').hidden = true; handled = true; }
+  if (!handled && current) { current = ''; renderEntry(); handled = true; }
+  if (!handled && draftOpen) { draftOpen = false; renderDraft(); handled = true; }
+  if (handled) { armBack(); return; }
+  var n = (drafts.IN || []).length + (drafts.OUT || []).length + (drafts.TR || []).length;
+  $('leaveHint').textContent = n ? 'Your unsaved list (' + n + ' item' + (n > 1 ? 's' : '') + ') stays on this phone.' : 'You pressed Back.';
+  $('leave').hidden = false;
+  armBack();
+}
+
 /* ---------- start ---------- */
 window.onload = function () {
   try { var dd = JSON.parse(store('drafts') || 'null'); if (dd) ['IN', 'OUT', 'TR'].forEach(function (k) { drafts[k] = dd[k] || []; }); } catch (e) {}
@@ -1487,15 +1588,32 @@ window.onload = function () {
   try { trInfo = JSON.parse(store('trInfo') || 'null') || trInfo; } catch (e) {}
   try { recent = JSON.parse(store('recent') || '[]') || []; } catch (e) { recent = []; }
   try { listNames = JSON.parse(store('listNames') || 'null') || listNames; } catch (e) {}
+  try { notes = JSON.parse(store('notes') || 'null') || notes; } catch (e) {}
   trEdit = !(trInfo.name.trim() && trInfo.lr.trim());
   TOKEN = store('token') || '';
   setName(TOKEN ? (store('name') || '') : '');
   var st = store('tab');
-  if (st === 'OUT' || st === 'TR' || st === 'LISTS') tab = st;
+  if (st === 'IN' || st === 'TR' || st === 'LISTS') tab = st;
 
   var tabs = document.querySelectorAll('.tabs button');
   for (var i = 0; i < tabs.length; i++) tabs[i].onclick = function () { setTab(this.getAttribute('data-tab')); };
   $('save').onclick = doSave;
+  $('noteBtn').onclick = function () {
+    var box = $('noteBox'); box.hidden = !box.hidden;
+    if (!box.hidden) { $('noteIn').value = notes[tab] || ''; $('noteIn').focus(); }
+  };
+  $('noteIn').oninput = function () {
+    notes[tab] = this.value; store('notes', JSON.stringify(notes));
+    $('noteBtn').classList.toggle('has', !!this.value.trim());
+  };
+  armBack();
+  window.addEventListener('popstate', onBack);
+  $('leaveStay').onclick = function () { $('leave').hidden = true; };
+  $('leaveGo').onclick = function () { leaving = true; $('leave').hidden = true; history.go(-2); };
+  window.addEventListener('beforeunload', function (ev) {
+    if (leaving) return;
+    if ((drafts.IN || []).length + (drafts.OUT || []).length + (drafts.TR || []).length) { ev.preventDefault(); ev.returnValue = ''; }
+  });
   $('who').onclick = function () {
     if (!TOKEN) { showLogin(''); return; }
     $('meName').textContent = 'Logged in as ' + myName; $('me').hidden = false;
