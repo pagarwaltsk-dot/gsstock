@@ -42,6 +42,16 @@
   .sk .nm small{display:block;color:var(--orange);font-size:12px}
   .sk .q{font-weight:700;font-size:15px;text-align:right;white-space:nowrap}
   .neg{color:var(--red) !important}
+  .lg .note{font-size:12px;color:#7d8784;font-style:italic;margin-top:2px;white-space:pre-wrap}
+  .chipsrow{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chipsrow::-webkit-scrollbar{display:none}
+  .chipsrow button{flex-shrink:0;border:1px solid #c9cfcb;background:#fff;color:#333;border-radius:16px;padding:6px 12px;font-size:13px;white-space:nowrap}
+  .chipsrow button.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .chipsrow.st button.on{background:var(--teal);border-color:var(--teal)}
+  .cnt{font-size:12px;color:var(--muted);margin:2px 2px 8px}
+  .cath{font-size:12px;font-weight:700;color:var(--hdr);margin:14px 2px 6px;text-transform:none}
+  .showh{display:block;margin:10px auto;border:0;background:none;color:var(--teal);font-weight:600;font-size:14px;text-decoration:underline}
+  .sk.hid .nm{color:#8a9592}
   .of{font-size:.72em;font-weight:400;color:#8a9592;white-space:nowrap}
 
   .lhead{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 1px rgba(0,0,0,.08)}
@@ -106,6 +116,14 @@
       <button class="lback" id="lBack">Not you? Choose another name</button>
     </div>
     <div class="lerr" id="lErr"></div>
+  </div>
+</div>
+<div class="modal" id="leave" hidden>
+  <div class="mbox">
+    <b>Leave stock view?</b>
+    <div class="hint">You pressed Back.</div>
+    <button class="ok" id="leaveStay">Stay</button>
+    <button class="ok grey" id="leaveGo">Leave</button>
   </div>
 </div>
 <div class="modal" id="me" hidden>
@@ -237,7 +255,8 @@ function logOut() {
 }
 
 /* ---------- data ---------- */
-var ver = '', rows = null, item = '', ledger = null, q = '', busy = false;
+var ver = '', rows = null, item = '', ledger = null, q = '', busy = false, showHidden = false;
+var cat = store('stockCat') || '', stf = store('stockFilter') || 'all';   // chosen category and In stock / Empty / Below zero
 function refresh(force) {
   if (!TOKEN || busy || (!force && document.hidden)) return;
   busy = true;
@@ -260,7 +279,7 @@ function render() {
   var v = $('view');
   if (!$('q')) {
     v.innerHTML = '<div class="fs"><input id="q" type="search" placeholder="🔍 Find item" autocomplete="off" autocorrect="off" ' +
-      'autocapitalize="off" spellcheck="false"></div><div id="list"></div>';
+      'autocapitalize="off" spellcheck="false"><div id="filters"></div></div><div id="list"></div>';
     $('q').value = q;
     $('q').oninput = function () { q = this.value; renderList(); };
   }
@@ -271,16 +290,53 @@ function renderList() {
   if (!box) return;
   if (!rows) { box.innerHTML = '<div class="empty">Loading stock…</div>'; return; }
   var toks = norm(q) ? norm(q).split(' ') : [];
-  var show = rows.filter(function (r) {
+  var catOf = function (n) { return String((pack[n] || [])[3] || '').trim(); };
+  var visible = rows.filter(function (r) { return !r[3] || showHidden; });     // "Hide in app = Yes" in the Items sheet
+  var nHidden = rows.length - rows.filter(function (r) { return !r[3]; }).length;
+
+  // category buttons (from the Category column of the Items sheet), in sheet order
+  var cats = [], seenCat = {};
+  visible.forEach(function (r) { var c = catOf(r[0]); if (c && !seenCat[c.toLowerCase()]) { seenCat[c.toLowerCase()] = true; cats.push(c); } });
+  if (cat && !seenCat[cat.toLowerCase()]) cat = '';
+  var hasNoCat = visible.some(function (r) { return !catOf(r[0]); });
+  var f = '';
+  if (cats.length) {
+    f += '<div class="chipsrow">' + [''].concat(cats).concat(hasNoCat ? ['—'] : []).map(function (c) {
+      return '<button data-cat="' + esc(c) + '"' + (c === cat ? ' class="on"' : '') + '>' + (c === '' ? 'All' : c === '—' ? 'No category' : esc(c)) + '</button>';
+    }).join('') + '</div>';
+  }
+  f += '<div class="chipsrow st">' + [['all', 'All'], ['in', 'In stock'], ['zero', 'Empty'], ['neg', 'Below zero'], ['tr', '🚚 On the way']].map(function (x) {
+    return '<button data-stf="' + x[0] + '"' + (x[0] === stf ? ' class="on"' : '') + '>' + x[1] + '</button>';
+  }).join('') + '</div>';
+  var fb = $('filters'); if (fb && fb.innerHTML !== f) fb.innerHTML = f;
+
+  var show = visible.filter(function (r) {
+    var c = catOf(r[0]);
+    if (cat === '—' ? c : (cat && c.toLowerCase() !== cat.toLowerCase())) return false;
+    var t = Math.round(r[1] * 1000) / 1000;
+    if (stf === 'in' && !(t > 0)) return false;
+    if (stf === 'zero' && t !== 0) return false;
+    if (stf === 'neg' && !(t < 0)) return false;
+    if (stf === 'tr' && !r[2]) return false;
     if (!toks.length) return true;
-    var p = pack[r[0]] || [], t = norm(r[0] + ' ' + (p[4] || ''));
-    return toks.every(function (k) { return t.indexOf(k) >= 0; });
+    var p = pack[r[0]] || [], tx = norm(r[0] + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return tx.indexOf(k) >= 0; });
   });
-  box.innerHTML = show.length ? show.slice(0, 200).map(function (r) {
-    return '<div class="sk" data-sk="' + esc(r[0]) + '"><div class="nm">' + esc(r[0]) +
+  var row = function (r) {
+    return '<div class="sk' + (r[3] ? ' hid' : '') + '" data-sk="' + esc(r[0]) + '"><div class="nm">' + esc(r[0]) + (r[3] ? ' (hidden)' : '') +
       (r[2] ? '<small>🚚 ' + esc(packText(r[0], r[2])) + ' on the way</small>' : '') + '</div>' +
       '<div class="q' + (r[1] < 0 ? ' neg' : '') + '">' + esc(packText(r[0], r[1])) + '</div></div>';
-  }).join('') + (show.length > 200 ? '<div class="empty">Type to find more items</div>' : '') : '<div class="empty">No item matches</div>';
+  };
+  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + '</div>';
+  if (!show.length) h += '<div class="empty">No item matches</div>';
+  else if (!cat && cats.length && !toks.length) {
+    // all categories: grouped under a small heading per category, in sheet order
+    var groups = {}, order = [];
+    show.forEach(function (r) { var c = catOf(r[0]) || 'No category'; if (!groups[c]) { groups[c] = []; order.push(c); } groups[c].push(r); });
+    order.forEach(function (c) { h += '<div class="cath">' + esc(c) + ' · ' + groups[c].length + '</div>' + groups[c].map(row).join(''); });
+  } else h += show.map(row).join('');
+  box.innerHTML = h;
+  if (nHidden) box.innerHTML += '<button class="showh" data-showh="1">' + (showHidden ? 'Don\'t show hidden items' : 'Show ' + nHidden + ' hidden item' + (nHidden > 1 ? 's' : '')) + '</button>';
 }
 function renderLedger() {
   var L = ledger, v = $('view');
@@ -300,7 +356,7 @@ function renderLedger() {
     var cls = r.kind === 'OUT' ? 'out' : 'in';
     var word = r.kind === 'OUT' ? 'OUT' : (r.kind === 'RECEIVED' ? 'IN 🚚' : 'IN');
     return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
-      '<div class="li">(' + esc(r.list) + ')</div></div>' +
+      '<div class="li">(' + esc(r.list) + ')</div>' + (r.note ? '<div class="note">📝 ' + esc(r.note) + '</div>' : '') + '</div>' +
       '<div class="m"><div class="mv ' + cls + '">' + fmt(r.qty) + ' ' + unitHtml(item, r.unit) + ' ' + word + '</div>' +
       '<div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' + esc(packText(item, r.bal)) + '</div></div></div>';
   }).join('');
@@ -317,9 +373,27 @@ window.onload = function () {
   $('view').addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-sk]');
     if (b) { openItem(b.getAttribute('data-sk')); return; }
-    if (ev.target.closest('[data-back]')) back();
+    if (ev.target.closest('[data-back]')) { back(); return; }
+    if (ev.target.closest('[data-showh]')) { showHidden = !showHidden; renderList(); return; }
+    var cb = ev.target.closest('[data-cat]');
+    if (cb) { cat = cb.getAttribute('data-cat'); store('stockCat', cat); renderList(); return; }
+    var sb = ev.target.closest('[data-stf]');
+    if (sb) { stf = sb.getAttribute('data-stf'); store('stockFilter', stf); renderList(); }
   });
-  window.addEventListener('popstate', function () { if (item) back(); });
+  // Back button: from an item go back to the list, otherwise ask before leaving
+  var leaving = false;
+  var armBack = function () { try { history.pushState({ gs: Date.now() }, ''); } catch (e) {} };
+  armBack();
+  window.addEventListener('popstate', function () {
+    if (leaving) return;
+    if (!$('me').hidden) $('me').hidden = true;
+    else if (!$('leave').hidden) $('leave').hidden = true;
+    else if (item) back();
+    else $('leave').hidden = false;
+    armBack();
+  });
+  $('leaveStay').onclick = function () { $('leave').hidden = true; };
+  $('leaveGo').onclick = function () { leaving = true; $('leave').hidden = true; history.go(-2); };
   $('lNames').onclick = function (ev) { var b = ev.target.closest('[data-ln]'); if (b) pickLogin(b.getAttribute('data-ln')); };
   $('lGo').onclick = doLogin;
   $('lPin').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); doLogin(); } };
