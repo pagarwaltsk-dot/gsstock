@@ -30,6 +30,12 @@
   .tabs{display:flex;background:var(--hdr);flex-shrink:0}
   .tabs button{flex:1 1 0;min-width:0}
   .tabs button[hidden]{display:none}
+  #rep{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;padding:6px 10px;font-size:13px;font-weight:700;margin-left:auto}
+  #rep + #who{margin-left:0}
+  .rpq{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+  .rpq button{border:1px solid #cfcfcf;background:#fff;border-radius:16px;padding:6px 12px;font-size:13px;color:var(--text)}
+  .rpd{display:flex;gap:8px}.rpd label{flex:1;font-size:12px;color:var(--muted)}.rpd input{margin-top:3px;font-size:15px;padding:9px}
+  #rpMsg{font-size:13px;margin-top:10px;color:var(--muted);min-height:18px}
   #inst{border:0;background:#25D366;color:#fff;border-radius:16px;padding:6px 10px;font-size:13px;font-weight:700}
   #inst[hidden]{display:none}
   .login{position:fixed;inset:0;background:var(--hdr);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -283,6 +289,7 @@
 <header>
   <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v15</small></div>
   <button id="inst" hidden>⤓ Install</button>
+  <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
 </header>
 <div class="tabs" id="tabs">
@@ -331,6 +338,21 @@
     <input class="in1" id="pmIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
     <button class="ok" id="pmOk">OK</button>
     <button class="ok" id="pmNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
+  </div>
+</div>
+<div class="modal" id="rp" hidden>
+  <div class="mbox">
+    <b>📄 Activity PDF</b>
+    <div class="hint">Every OUT, IN, transport and receipt, with tick boxes to check against your register.</div>
+    <div class="rpq"><button data-d="0">Today</button><button data-d="1">Yesterday</button><button data-d="7">Last 7 days</button></div>
+    <div class="rpd"><label>From<input class="in1" id="rpFrom" type="date"></label><label>To<input class="in1" id="rpTo" type="date"></label></div>
+    <button class="ok" id="rpMake">Make PDF</button>
+    <div id="rpMsg"></div>
+    <div id="rpDone" hidden>
+      <button class="ok" id="rpShare" style="background:#25D366">Share (WhatsApp…)</button>
+      <button class="ok" id="rpSave" style="background:#eee;color:#333;margin-top:6px">Save to phone</button>
+    </div>
+    <button class="ok" id="rpClose" style="background:#eee;color:#555;margin-top:6px">Close</button>
   </div>
 </div>
 <div class="modal" id="leave" hidden>
@@ -392,7 +414,8 @@ var RPC = {
   editEntry:   function (no, pin, ch) { return ['edit_entry', { p_token: tk(), p_no: no, p_pin: pin || '', p_ch: ch || {} }]; },
   verifyPin:   function (pin) { return ['verify_pin', { p_token: tk(), p_pin: pin || '' }]; },
   stockList:   function () { return ['stock_list', { p_token: tk() }]; },
-  itemLedger:  function (item) { return ['item_ledger', { p_token: tk(), p_item: item }]; }
+  itemLedger:  function (item) { return ['item_ledger', { p_token: tk(), p_item: item }]; },
+  dayReport:   function (a, b) { return ['day_report', { p_token: tk(), p_from: a || '', p_to: b || '' }]; }
 };
 var google = { script: { get run() {
   var ok = function () {}, fail = function () {}, r = {};
@@ -1565,10 +1588,170 @@ function doSave() {
 /* ---------- Back button: close what is open, otherwise ask before leaving ---------- */
 var leaving = false;
 function armBack() { try { history.pushState({ gs: Date.now() }, ''); } catch (e) {} }
+
+// ---------- 📄 Activity PDF (made on the phone, shared to WhatsApp) ----------
+var PDF_LIBS = ['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'];
+var rpFile = null;
+function loadScript(src) {
+  return new Promise(function (ok, bad) {
+    var s = document.createElement('script'); s.src = src; s.onload = ok;
+    s.onerror = function () { bad({ message: 'Could not load the PDF maker — check internet' }); };
+    document.head.appendChild(s);
+  });
+}
+function pdfLibs() {
+  if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+  return loadScript(PDF_LIBS[0]).then(function () { return loadScript(PDF_LIBS[1]); });
+}
+function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function rpRange(days) {
+  var t = new Date(), a = new Date(t), b = new Date(t);
+  if (days === 1) { a.setDate(t.getDate() - 1); b = new Date(a); }
+  if (days === 7) a.setDate(t.getDate() - 6);
+  $('rpFrom').value = ymd(a); $('rpTo').value = ymd(b);
+}
+function pdfTxt(v) {          // the PDF's built-in font only has English letters
+  return String(v == null ? '' : v).replace(/[—–]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+    .replace(/…/g, '...').replace(/[^\x20-\x7e\xa0-\xff\n]/g, '?');
+}
+function qtyTxt(x) { return n0(x.qty) + ' ' + (x.un || '') + (x.of ? ' (of ' + x.of + ')' : ''); }
+function n0(v) { var x = Number(v); return isFinite(x) ? String(Math.round(x * 1000) / 1000) : String(v || ''); }
+function buildPdf(r) {
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  var W = doc.internal.pageSize.getWidth(), M = 12, y = 14;
+  var range = r.from === r.to ? r.from : r.from + '  to  ' + r.to;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text('GSSTOCK - Activity', M, y);
+  doc.setFontSize(12); doc.text(pdfTxt(range), W - M, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(110);
+  doc.text(pdfTxt('Made by ' + r.me + ' on ' + r.made + '.   App = ticked / received in the app.   Check = tick by hand after matching your register.'), M, y + 5);
+  doc.setTextColor(0); y += 11;
+  var tickCol = 4, boxCol = 5;
+  function marks(data) {
+    if (data.section !== 'body') return;
+    var c = data.cell, cx = c.x + c.width / 2, cy = c.y + c.height / 2;
+    if (data.column.index === boxCol) { doc.setDrawColor(60); doc.setLineWidth(0.3); doc.rect(cx - 2, cy - 2, 4, 4); }
+    if (data.column.index === tickCol && c.raw === 'TICK') {
+      doc.setDrawColor(20, 140, 60); doc.setLineWidth(0.6);
+      doc.line(cx - 1.8, cy, cx - 0.5, cy + 1.4); doc.line(cx - 0.5, cy + 1.4, cx + 2, cy - 1.6);
+    }
+  }
+  function cellStyle(data) {
+    if (data.section === 'body' && data.column.index === tickCol && data.cell.raw === 'TICK') data.cell.text = [''];
+    if (data.section === 'body' && data.row.raw && data.row.raw.gone) { data.cell.styles.textColor = 150; data.cell.styles.fontStyle = 'italic'; }
+  }
+  function head(title) {
+    if (y > 270) { doc.addPage(); y = 14; }
+    doc.setFillColor(7, 94, 84); doc.rect(M, y - 4.5, W - 2 * M, 7, 'F');
+    doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(title, M + 2, y);
+    doc.setTextColor(0); y += 6;
+  }
+  function block(left, right, note, edits) {
+    var need = 12 + (note ? 4 : 0) + (edits ? 4 * edits.length : 0);
+    if (y + need > 282) { doc.addPage(); y = 14; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text(pdfTxt(left), M, y + 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.text(pdfTxt(right), W - M, y + 4, { align: 'right' });
+    y += 5;
+    if (note) { doc.setFont('helvetica', 'italic'); doc.text(doc.splitTextToSize(pdfTxt('Note: ' + note), W - 2 * M), M, y + 3.5); y += 4; }
+    (edits || []).forEach(function (t) {
+      doc.setTextColor(190, 40, 40); doc.setFont('helvetica', 'italic');
+      var ls = doc.splitTextToSize(pdfTxt('EDITED ' + t), W - 2 * M); doc.text(ls, M, y + 3.5); y += 3.6 * ls.length;
+      doc.setTextColor(0);
+    });
+    y += 1;
+  }
+  function table(headRow, rows, widths) {
+    doc.autoTable({
+      startY: y, margin: { left: M, right: M }, head: [headRow], body: rows,
+      theme: 'grid', styles: { fontSize: 8.5, cellPadding: 1.4, lineColor: 190, lineWidth: 0.15, valign: 'middle', overflow: 'linebreak' },
+      headStyles: { fillColor: [235, 235, 235], textColor: 30, fontStyle: 'bold' },
+      columnStyles: widths, didParseCell: cellStyle, didDrawCell: marks
+    });
+    y = doc.lastAutoTable.finalY + 5;
+  }
+  var groups = [['Stock Out', 'STOCK OUT'], ['Stock In', 'STOCK IN'], ['In Transport', 'TRANSPORT SENT (LR)']];
+  var any = false;
+  groups.forEach(function (g) {
+    var list = (r.entries || []).filter(function (e) { return e.type === g[0]; });
+    if (!list.length) return;
+    any = true; head(g[1] + '  (' + list.length + ')');
+    list.forEach(function (e) {
+      var tr = e.type === 'In Transport';
+      var left = tr ? (e.transport || '?') + '  -  LR ' + (e.lr || '?') + (e.from ? '  -  from ' + e.from : '')
+                    : (e.type === 'Stock Out' ? 'OUT' : 'IN') + ' #' + e.no + (e.lname ? '  -  ' + e.lname : '');
+      block(left, (tr ? '#' + e.no + '   ' : '') + e.by + '   ' + e.time, e.note, e.edits);
+      var rows = (e.lines || []).map(function (l, i) {
+        var app = l.deleted ? '' : tr ? (Number(l.recd) >= Number(l.qty) ? 'TICK' : Number(l.recd) > 0 ? n0(l.recd) + ' of ' + n0(l.qty) : 'on way')
+                                      : (l.checked ? 'TICK' : '');
+        var row = [i + 1, pdfTxt(l.item) + (l.deleted ? '  (REMOVED)' : ''), pdfTxt(qtyTxt(l)), pdfTxt(l.note), app, '', ''];
+        row.gone = l.deleted; return row;
+      });
+      table(['#', 'Item', 'Qty', 'Note', tr ? 'Recd' : 'App', 'Check', 'Remarks'], rows,
+            { 0: { cellWidth: 7, halign: 'center' }, 1: { cellWidth: 58 }, 2: { cellWidth: 40 }, 3: { cellWidth: 30 },
+              4: { cellWidth: 14, halign: 'center', fontSize: 7.5 }, 5: { cellWidth: 12 }, 6: { cellWidth: 'auto' } });
+    });
+  });
+  if ((r.receipts || []).length) {
+    any = true; head('TRANSPORT RECEIVED  (' + r.receipts.length + ')');
+    var rows = r.receipts.map(function (x, i) {
+      var row = [i + 1, pdfTxt(x.time + '\n' + x.by), pdfTxt((x.transport || '?') + ' - LR ' + (x.lr || '?') + (x.from ? '\nfrom ' + x.from : '')),
+                 pdfTxt(x.item) + (x.deleted ? '  (REMOVED)' : ''), pdfTxt(qtyTxt(x)),
+                 x.full ? 'Full' : 'Part (' + n0(x.upto) + ' of ' + n0(x.lqty) + ')', '', ''];
+      row.gone = x.deleted; return row;
+    });
+    tickCol = -1; boxCol = 6;
+    table(['#', 'When / by', 'Transport', 'Item', 'Qty received', 'Full / part', 'Check', 'Remarks'], rows,
+          { 0: { cellWidth: 7, halign: 'center' }, 1: { cellWidth: 26, fontSize: 7.5 }, 2: { cellWidth: 32, fontSize: 7.5 }, 3: { cellWidth: 45 },
+            4: { cellWidth: 30 }, 5: { cellWidth: 18, fontSize: 7.5 }, 6: { cellWidth: 12 }, 7: { cellWidth: 'auto' } });
+  }
+  if (!any) { doc.setFontSize(11); doc.text('No entries on these dates.', M, y + 6); }
+  var pages = doc.internal.getNumberOfPages();
+  for (var p = 1; p <= pages; p++) {
+    doc.setPage(p); doc.setFontSize(8); doc.setTextColor(130);
+    doc.text(pdfTxt('GSSTOCK  -  ' + range + '   -   page ' + p + ' of ' + pages), W / 2, 292, { align: 'center' });
+  }
+  return doc;
+}
+function rpMake() {
+  var a = $('rpFrom').value, b = $('rpTo').value;
+  $('rpDone').hidden = true; rpFile = null; $('rpMake').disabled = true; $('rpMsg').textContent = 'Making PDF…';
+  Promise.all([pdfLibs(), rpcCall('day_report', RPC.dayReport(a, b)[1])]).then(function (res) {
+    var r = res[1], doc = buildPdf(r);
+    var name = 'gsstock-activity-' + (a || 'today') + (b && b !== a ? '-to-' + b : '') + '.pdf';
+    var blob = doc.output('blob');
+    rpFile = { blob: blob, name: name };
+    var cnt = (r.entries || []).length + (r.receipts || []).length;
+    $('rpMsg').textContent = cnt ? '✓ Ready — ' + (r.entries || []).length + ' entries, ' + (r.receipts || []).length + ' receipts' : 'No entries on these dates (PDF still made).';
+    $('rpDone').hidden = false;
+  }, function (e) { $('rpMsg').textContent = '⚠ ' + ((e && e.message) || 'Could not make PDF'); })
+    .then(function () { $('rpMake').disabled = false; });
+}
+function rpSave() {
+  if (!rpFile) return;
+  var u = URL.createObjectURL(rpFile.blob), a = document.createElement('a');
+  a.href = u; a.download = rpFile.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(u); }, 60000);
+}
+function rpShare() {
+  if (!rpFile) return;
+  var f = null;
+  try { f = new File([rpFile.blob], rpFile.name, { type: 'application/pdf' }); } catch (e) {}
+  if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
+    navigator.share({ files: [f], title: 'GSSTOCK activity' }).catch(function (e) { if (!e || e.name !== 'AbortError') rpSave(); });
+  } else { toast('Sharing not supported here — saving instead'); rpSave(); }
+}
+function rpInit() {
+  $('rep').onclick = function () { rpRange(0); $('rpMsg').textContent = ''; $('rpDone').hidden = true; $('rp').hidden = false; pdfLibs().catch(function () {}); };
+  $('rpClose').onclick = function () { $('rp').hidden = true; };
+  $('rpMake').onclick = rpMake; $('rpShare').onclick = rpShare; $('rpSave').onclick = rpSave;
+  var q = document.querySelectorAll('.rpq button');
+  for (var i = 0; i < q.length; i++) q[i].onclick = function () { rpRange(Number(this.getAttribute('data-d'))); $('rpDone').hidden = true; };
+}
+
 function onBack() {
   if (leaving) return;
   var shut = function (id) { var m = $(id); if (m && !m.hidden) { m.hidden = true; return true; } return false; };
-  var handled = shut('leave') || shut('pm') || shut('me');
+  var handled = shut('leave') || shut('pm') || shut('me') || shut('rp');
   if (!handled && Object.keys(editing).length) { editing = {}; renderList(); handled = true; }
   if (!handled && Object.keys(partOpen).length) { partOpen = {}; renderList(); handled = true; }
   if (!handled && !$('noteBox').hidden) { $('noteBox').hidden = true; handled = true; }
@@ -1614,6 +1797,7 @@ window.onload = function () {
     if (leaving) return;
     if ((drafts.IN || []).length + (drafts.OUT || []).length + (drafts.TR || []).length) { ev.preventDefault(); ev.returnValue = ''; }
   });
+  rpInit();
   $('who').onclick = function () {
     if (!TOKEN) { showLogin(''); return; }
     $('meName').textContent = 'Logged in as ' + myName; $('me').hidden = false;
