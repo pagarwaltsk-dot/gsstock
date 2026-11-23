@@ -1,7 +1,7 @@
 // gsstock — lets the app install like an app and open on a weak signal.
 // Always tries the internet first, so a new version shows straight away;
 // only when there is no signal does it use the copy saved on the phone.
-const CACHE = 'gsstock-v12';
+const CACHE = 'gsstock-v15';
 const FILES = ['app.html', 'stock.html', 'config.js', 'manifest.webmanifest', 'stock.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
