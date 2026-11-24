@@ -71,6 +71,9 @@
   .lg .mv.in{color:var(--teal)}.lg .mv.out{color:var(--red)}
   .lg .bal{font-size:12px;color:var(--muted);margin-top:2px}
   .lg.op{background:#f7faf9;border:1px dashed #cfe5df;box-shadow:none}
+  .lg.old{opacity:.5;box-shadow:none;background:#f4f4f4}
+  .oldh{font-size:12px;color:var(--muted);margin:14px 2px 6px;font-weight:700}
+  .lhead .pk{margin-top:8px;font-size:13px;color:#fff;background:#990000;border-radius:8px;padding:8px 10px}
 
   .login{position:fixed;inset:0;background:var(--hdr);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
   .login[hidden]{display:none}
@@ -350,19 +353,24 @@ function renderLedger() {
       return '<b>' + fmt(p.qty) + ' ' + unitHtml(item, p.unit) + '</b> — ' + esc(p.list);
     }).join('<br>') + '</div>';
   }
+  if (L.warn > 0) h += '<div class="pk">⚠ Packing was changed in the Items sheet, but ' + L.warn + ' entr' + (L.warn > 1 ? 'ies were' : 'y was') +
+    ' saved in the old packing' + (L.wtr ? ' (' + L.wtr + ' on the way in transport)' : '') + ' — this stock is not right. Count it and set an Opening date in the Items sheet, or edit those entries in the app.</div>';
   if (L.bad) h += '<div class="warn">Not counted: ' + esc(L.bad) + ' — fill packing in the Items sheet</div>';
   h += '</div>';
-  h += (L.rows || []).map(function (r) {
+  var rows = L.rows || [], fresh = rows.filter(function (r) { return !r.old; }), old = rows.filter(function (r) { return r.old; });
+  var lg = function (r) {
     var cls = r.kind === 'OUT' ? 'out' : 'in';
     var word = r.kind === 'OUT' ? 'OUT' : (r.kind === 'RECEIVED' ? 'IN 🚚' : 'IN');
-    return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
+    return '<div class="lg' + (r.old ? ' old' : '') + '"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
       '<div class="li">(' + esc(r.list) + ')</div>' + (r.note ? '<div class="note">📝 ' + esc(r.note) + '</div>' : '') + '</div>' +
       '<div class="m"><div class="mv ' + cls + '">' + fmt(r.qty) + ' ' + unitHtml(item, r.unit) + ' ' + word + '</div>' +
-      '<div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' + esc(packText(item, r.bal)) + '</div></div></div>';
-  }).join('');
-  if (!(L.rows || []).length) h += '<div class="empty">No movement yet</div>';
-  h += '<div class="lg op"><div class="d"><b>Opening balance</b><small>from the Items sheet</small></div>' +
+      (r.old ? '' : '<div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' + esc(packText(item, r.bal)) + '</div>') + '</div></div>';
+  };
+  h += fresh.map(lg).join('');
+  if (!fresh.length) h += '<div class="empty">No movement' + (L.odate ? ' since the opening date' : ' yet') + '</div>';
+  h += '<div class="lg op"><div class="d"><b>Opening balance</b><small>' + (L.odate ? 'counted on ' + esc(L.odate) : 'from the Items sheet') + '</small></div>' +
     '<div class="m"><div class="mv">' + esc(packText(item, L.opening)) + '</div></div></div>';
+  if (old.length) h += '<div class="oldh">Before the opening date — not counted in stock</div>' + old.map(lg).join('');
   v.innerHTML = h;
 }
 function openItem(n) { item = n; ledger = null; renderLedger(); $('view').parentNode.scrollTop = 0; busy = false; refresh(true); }

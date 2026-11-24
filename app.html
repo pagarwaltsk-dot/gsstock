@@ -30,6 +30,7 @@
   .tabs{display:flex;background:var(--hdr);flex-shrink:0}
   .tabs button{flex:1 1 0;min-width:0}
   .tabs button[hidden]{display:none}
+  .more{display:block;width:100%;margin:10px 0 18px;border:1px solid #cfcfcf;background:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:600;color:var(--hdr)}
   #rep{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:16px;padding:6px 10px;font-size:13px;font-weight:700;margin-left:auto}
   #rep + #who{margin-left:0}
   .rpq{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
@@ -287,7 +288,7 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v15</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v16</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -415,6 +416,8 @@ var RPC = {
   verifyPin:   function (pin) { return ['verify_pin', { p_token: tk(), p_pin: pin || '' }]; },
   stockList:   function () { return ['stock_list', { p_token: tk() }]; },
   itemLedger:  function (item) { return ['item_ledger', { p_token: tk(), p_item: item }]; },
+  actMore:     function (before, type, q) { return ['activity_more', { p_token: tk(), p_before: before || null, p_type: type || '', p_q: q || '' }]; },
+  getEntry:    function (no) { return ['get_entry', { p_token: tk(), p_no: no }]; },
   dayReport:   function (a, b) { return ['day_report', { p_token: tk(), p_from: a || '', p_to: b || '' }]; }
 };
 var google = { script: { get run() {
@@ -430,7 +433,7 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '15';
+var APP_VER = '16';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
@@ -441,6 +444,8 @@ var trInfo = { name: '', lr: '', from: '' }, trEdit = true;
 var saving = false, loaded = false, polling = false, myName = '', nameCb = null;
 var notes = { IN: '', OUT: '', TR: '' }, noteLine = -1, lastAdded = -1;
 var editing = {}, pinCb = null, pinMem = '', pinAt = 0;
+var older = {}, actOlder = [], actEnd = false, actLoading = false, entLoading = {};
+function putEntry(e) { entries[e.no] = e; if (older[e.no]) older[e.no] = e; }
 var entries = {}, ver = '', openNos = {}, busy = {}, partOpen = {}, undoArm = {}, editOpen = {}, seenNos = null;
 
 /* ---------- helpers ---------- */
@@ -760,7 +765,7 @@ function saveEdit(no) {
   google.script.run
     .withSuccessHandler(function (ne) {
       delete busy['ed' + no]; delete editing[no];
-      if (ne) entries[ne.no] = ne; else delete entries[no];
+      if (ne) putEntry(ne); else { delete entries[no]; delete older[no]; }
       renderList(); toast(ne ? 'List updated — stock adjusted' : 'List removed — stock adjusted');
       setTimeout(function () { poll(true); }, 300);
     })
@@ -1192,14 +1197,17 @@ function evHtml(a) {
     '<span class="tm">' + esc(a.time) + '</span></div>';
   if (open) {
     var e = entries[a.no];
-    h += e ? entryHtml(e, true) : '<div class="es" style="margin-top:6px">Older list — open the Log sheet for details.</div>';
+    if (!e && a.no) loadEntry(a.no);
+    h += e ? entryHtml(e, true) : '<div class="es" style="margin-top:6px">' + (a.no ? 'Opening list #' + a.no + '…' : 'No list details') + '</div>';
   }
   return h + '</div>';
 }
 function renderActivity(area) {
   var fq = norm(fqText.lists);
   var TYPES = { IN: 'Stock In', OUT: 'Stock Out', TR: TR_TYPE };
-  var show = activity.filter(function (a) {
+  var seen = {}, all = activity.concat(actOlder).filter(function (a) { if (seen[a.id]) return false; seen[a.id] = 1; return true; });
+  all.sort(function (x, y) { return y.id - x.id; });
+  var show = all.filter(function (a) {
     if (!SHOW_ACT[a.action]) return false;                       // only stock in / out / transport entries
     return actType === 'all' || a.type === TYPES[actType];
   });
@@ -1210,10 +1218,38 @@ function renderActivity(area) {
       return toks.every(function (k) { return t.indexOf(k) >= 0; });
     });
   }
-  area.innerHTML = show.length ? show.map(evHtml).join('') :
-    '<div class="empty">' + (fq ? 'Nothing matches your search' : 'No entries yet.') + '</div>';
+  var more = actEnd ? '<div class="empty" style="padding:10px">' + (fq ? 'No more matches' : 'No older entries') + '</div>'
+    : '<button class="more" id="actMore">' + (actLoading ? 'Loading…' : fq ? '🔍 Search older entries' : '⬇ Load older entries') + '</button>';
+  area.innerHTML = (show.length ? show.map(evHtml).join('') :
+    '<div class="empty">' + (fq ? 'Nothing matches in recent entries' : 'No entries yet.') + '</div>') + ((show.length || fq || all.length) ? more : '');
 }
 
+function loadOlderAct() {
+  if (actLoading || actEnd) return;
+  var TYPES = { IN: 'Stock In', OUT: 'Stock Out', TR: TR_TYPE };
+  var ids = activity.concat(actOlder).map(function (x) { return x.id; });
+  var fq = norm(fqText.lists);
+  var shown = activity.concat(actOlder).filter(function (x) {
+    return SHOW_ACT[x.action] && (actType === 'all' || x.type === TYPES[actType]) &&
+      (!fq || fq.split(' ').every(function (k) { return norm([x.by, x.action, x.type, x.list, x.item, String(x.no)].join(' ')).indexOf(k) >= 0; }));
+  }).map(function (x) { return x.id; });
+  var before = shown.length ? Math.min.apply(null, shown) : (ids.length && !fq && actType === 'all' ? Math.min.apply(null, ids) : null);
+  actLoading = true; renderList();
+  rpcCall('activity_more', RPC.actMore(before, actType === 'all' ? '' : TYPES[actType], fq)[1]).then(function (rows) {
+    rows = rows || [];
+    actOlder = actOlder.concat(rows);
+    if (rows.length < 50) actEnd = true;
+  }, function (e) { toast('⚠ ' + ((e && e.message) || 'Could not load')); })
+    .then(function () { actLoading = false; renderList(); });
+}
+function loadEntry(no) {
+  if (entLoading[no]) return;
+  entLoading[no] = true;
+  rpcCall('get_entry', RPC.getEntry(no)[1]).then(function (e) {
+    if (e && e.no) { older[e.no] = e; entries[e.no] = e; }
+  }, function (e) { toast('⚠ ' + ((e && e.message) || 'Could not open the list')); })
+    .then(function () { delete entLoading[no]; renderList(); });
+}
 function entryText(e) {
   return norm([e.transport, e.lr, e.from, e.lname, e.by, String(e.no), e.type].concat(e.lines.map(function (l) { return l.item; })).join(' '));
 }
@@ -1278,6 +1314,7 @@ function applyState(d, fromCache) {
     next[e.no] = e;
     if (seenNos && !seenNos[e.no] && !(myName && e.by.toLowerCase() === myName.toLowerCase())) fresh.push(e);
   });
+  for (var on in older) if (!next[on]) next[on] = older[on];      // older lists opened from Activity stay available
   entries = next;
   if (!seenNos) seenNos = {};
   (d.entries || []).forEach(function (e) { seenNos[e.no] = true; });
@@ -1319,7 +1356,7 @@ function serverCall(key, fnName, args, okMsg, onFail) {
   var runner = google.script.run
     .withSuccessHandler(function (e) {
       delete busy[key];
-      if (e) entries[e.no] = e;
+      if (e) putEntry(e);
       renderList();
       if (okMsg) toast(okMsg);
       setTimeout(function () { poll(false); }, 300);
@@ -1362,7 +1399,8 @@ function onClick(ev) {
   // sub tabs
   if ((b = t.closest('[data-trv]'))) { trView = b.getAttribute('data-trv'); current = ''; renderView(); return; }
   if ((b = t.closest('[data-lv]'))) { listView = b.getAttribute('data-lv'); renderView(); return; }
-  if ((b = t.closest('[data-at]'))) { actType = b.getAttribute('data-at'); renderView(); return; }
+  if (t.id === 'actMore') { loadOlderAct(); return; }
+  if ((b = t.closest('[data-at]'))) { actType = b.getAttribute('data-at'); actEnd = false; renderView(); return; }
 
   // entry
   if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
@@ -1436,7 +1474,7 @@ function onClick(ev) {
     google.script.run
       .withSuccessHandler(function (e) {
         delete busy['ed' + sn]; delete editOpen[sn];
-        if (e) entries[e.no] = e;
+        if (e) putEntry(e);
         renderList(); toast('Transport details updated');
       })
       .withFailureHandler(function (err) { delete busy['ed' + sn]; renderList(); toast('Not saved — ' + errMsg(err)); })
@@ -1498,7 +1536,7 @@ function onInput(ev) {
   var t = ev.target;
   if (t.id === 'srch') { renderResults(t.value); return; }
   if (t.id === 'lname') { listNames[tab] = t.value; store('listNames', JSON.stringify(listNames)); return; }
-  if (t.hasAttribute('data-fq')) { fqText[t.getAttribute('data-fq')] = t.value; renderList(); return; }
+  if (t.hasAttribute('data-fq')) { fqText[t.getAttribute('data-fq')] = t.value; if (t.getAttribute('data-fq') === 'lists') actEnd = false; renderList(); return; }
   if (t.hasAttribute('data-tr')) {
     trInfo[t.getAttribute('data-tr')] = t.value;
     store('trInfo', JSON.stringify(trInfo));
@@ -1570,7 +1608,7 @@ function doSave() {
       else { listNames[m] = ''; store('listNames', JSON.stringify(listNames)); }
       notes[m] = ''; store('notes', JSON.stringify(notes)); noteLine = -1; lastAdded = -1; $('noteIn').value = ''; $('noteBox').hidden = true;
       poll(true);   // refresh Activity
-      entries[e.no] = e;
+      putEntry(e);
       if (!seenNos) seenNos = {};
       seenNos[e.no] = true;
       current = ''; draftOpen = false; flash = '';
