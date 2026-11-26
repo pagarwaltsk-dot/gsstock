@@ -88,6 +88,35 @@
   .ok{width:100%;margin-top:12px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:16px;padding:13px}
   .lback{background:none;border:0;color:rgba(255,255,255,.85);text-decoration:underline;font-size:14px;margin-top:14px;padding:6px 0}
   .lerr{min-height:22px;margin-top:12px;color:#ffd2cf;font-weight:600}
+  /* other godowns */
+  .modes{display:flex;gap:6px;margin:0 0 8px}
+  .modes button{flex:1;border:1px solid #c9cfcb;background:#fff;color:#333;border-radius:10px;padding:9px 6px;font-size:14px;font-weight:600}
+  .modes button.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .gbar{display:flex;gap:6px;margin:0 0 8px}
+  .gbar button{flex:1;border:1px solid #c9cfcb;background:#fff;border-radius:10px;padding:9px 6px;font-size:13px;font-weight:600;color:var(--hdr)}
+  .gr{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e5e8;border-radius:10px;padding:8px 8px 8px 12px;margin-bottom:6px}
+  .gr .nm{flex:1;min-width:0;font-size:15px;cursor:pointer}
+  .gr .nm small{display:block;font-size:12px;color:var(--muted)}
+  .gr .q{min-width:74px;text-align:right;font-weight:700;font-size:14px;white-space:nowrap}
+  .gr .pm{width:40px;height:40px;border:1px solid #c9cfcb;background:#fff;border-radius:10px;font-size:22px;line-height:1;color:var(--hdr);flex-shrink:0}
+  .gr .pm:active{background:#eef4f2}
+  .gl{background:#fff;border:1px solid #e2e5e8;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+  .gl.done{opacity:.55}
+  .gl small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .gt{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid #eef0f1;font-size:14px}
+  .gt input[type=checkbox]{width:20px;height:20px;accent-color:var(--hdr);flex-shrink:0}
+  .gt .nm{flex:1;min-width:0}
+  .gt .nm small{display:block;font-size:11px;color:var(--muted)}
+  .gt input[type=number]{width:70px;font-size:15px;padding:6px;border:1px solid #c9cfcb;border-radius:8px;text-align:center}
+  .gt .u{font-size:12px;color:var(--muted);min-width:42px}
+  .gbig{width:100%;margin-top:10px;border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:15px;padding:12px}
+  .gbig.grey{background:#eee;color:#555}
+  .gset{display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+  .gset input{width:70px;font-size:16px;padding:7px;border:1px solid #c9cfcb;border-radius:8px;text-align:center}
+  .gset button{border:0;border-radius:8px;background:var(--hdr);color:#fff;font-weight:700;padding:9px 12px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:9px;
+         font-size:14px;z-index:50;display:none;max-width:92vw;align-items:center;gap:12px}
+  #toast button{border:0;background:none;color:#8fe0cc;font-weight:700;font-size:14px;padding:0}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
   .modal[hidden]{display:none}
   .mbox{background:#fff;border-radius:14px;padding:16px;width:100%;max-width:340px}
@@ -102,7 +131,8 @@
   <button id="inst" hidden>⤓ Install</button>
   <button id="who">👤</button>
 </header>
-<main><div class="wrap" id="view"></div></main>
+<main><div class="wrap"><div id="modes"></div><div id="view"></div></div></main>
+<div id="toast"></div>
 
 <div class="login" id="login" hidden>
   <div class="lbox">
@@ -268,6 +298,17 @@ function refresh(force) {
     if (!d) { busy = false; return; }
     ver = d.ver; pack = d.pack || pack; if (d.units) UNITS = d.units;
     if (d.seeStock === false) { busy = false; logOut(); $('lErr').textContent = 'Your stock access was turned off.'; return; }
+    godowns = d.godowns || [];
+    if (gd && godowns.indexOf(gd) < 0) { gd = ''; store('stockGd', ''); }
+    paintModes();
+    if (gd) {
+      var gj = gview === 'hist' ? rpc('gd_ledger', { p_token: TOKEN, p_godown: gd, p_item: gItem }) : rpc('gd_list', { p_token: TOKEN, p_godown: gd });
+      return gj.then(function (r) {
+        if (gview === 'hist') gLedger = r; else gRows = (r && r.rows) || [];
+        busy = false;
+        if (gview === 'list' || gview === 'hist') gRender();
+      });
+    }
     var job = item ? rpc('item_ledger', { p_token: TOKEN, p_item: item }) : rpc('stock_list', { p_token: TOKEN });
     return job.then(function (r) { if (item) ledger = r; else rows = r || []; busy = false; render(); });
   }).catch(function (e) {
@@ -278,6 +319,7 @@ function refresh(force) {
 
 /* ---------- screens ---------- */
 function render() {
+  if (gd) { gRender(); return; }
   if (item) { renderLedger(); return; }
   var v = $('view');
   if (!$('q')) {
@@ -376,9 +418,221 @@ function renderLedger() {
 function openItem(n) { item = n; ledger = null; renderLedger(); $('view').parentNode.scrollTop = 0; busy = false; refresh(true); }
 function back() { item = ''; ledger = null; $('view').innerHTML = ''; render(); busy = false; refresh(true); }
 
+/* ---------- other godowns (R(G)…) — Staff sheet "Other godowns = Yes" only ---------- */
+var godowns = [], gd = store('stockGd') || '', gview = 'list', gRows = null, gItem = '', gLedger = null, gq = '', gLists = null, gTake = null;
+function paintModes() {
+  var m = $('modes');
+  if (!godowns.length) { m.innerHTML = ''; return; }
+  var h = '<div class="modes">' + [''].concat(godowns).map(function (g) {
+    return '<button data-gd="' + esc(g) + '"' + (g === gd ? ' class="on"' : '') + '>' + (g ? esc(g) : 'Main godown') + '</button>';
+  }).join('') + '</div>';
+  if (m.innerHTML !== h) m.innerHTML = h;
+}
+function setGodown(g) {
+  gd = g; store('stockGd', g); gview = 'list'; gRows = null; gItem = ''; gLedger = null;
+  item = ''; ledger = null;
+  $('view').innerHTML = ''; paintModes(); render(); busy = false; refresh(true);
+}
+function gPack(n) { var f = factor(n, UNITS[0]); return f > 0 ? f : 1; }              // one tap = 1 big pack (or 1 loose)
+function gPackName(n) { return factor(n, UNITS[0]) > 0 ? unitText(n, UNITS[0]) : baseText(n); }
+function gRender() {
+  var v = $('view');
+  if (gview === 'hist') { gRenderHist(); return; }
+  if (gview === 'lists') { gRenderLists(); return; }
+  if (gview === 'take') { gRenderTake(); return; }
+  if (gview === 'add') { gRenderAdd(); return; }
+  if (!$('gq')) {
+    v.innerHTML = '<div class="fs"><input id="gq" type="search" placeholder="🔍 Find item in ' + esc(gd) + '" autocomplete="off" autocorrect="off" ' +
+      'autocapitalize="off" spellcheck="false"></div><div class="gbar"><button data-gv="lists">📥 From an OUT list</button>' +
+      '<button data-gv="add">＋ Add item</button></div><div id="glist"></div>';
+    $('gq').value = gq;
+    $('gq').oninput = function () { gq = this.value; gRenderList(); };
+  }
+  gRenderList();
+}
+function gRenderList() {
+  var box = $('glist');
+  if (!box) return;
+  if (!gRows) { box.innerHTML = '<div class="empty">Loading ' + esc(gd) + '…</div>'; return; }
+  var toks = norm(gq) ? norm(gq).split(' ') : [];
+  var show = gRows.filter(function (r) {
+    if (!toks.length) return true;
+    var p = pack[r[0]] || [], tx = norm(r[0] + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return tx.indexOf(k) >= 0; });
+  });
+  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' · + / − is 1 big pack</div>';
+  if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Use 📥 From an OUT list or ＋ Add item.</div>';
+  else if (!show.length) h += '<div class="empty">No item matches</div>';
+  h += show.map(function (r) {
+    var n = r[0];
+    return '<div class="gr"><div class="nm" data-gh="' + esc(n) + '">' + esc(n) + '<small>' + esc(gPackName(n)) +
+      (gPack(n) > 1 ? ' of ' + fmt(gPack(n)) + ' ' + esc(baseText(n)) : '') + '</small></div>' +
+      '<div class="q' + (r[1] < 0 ? ' neg' : '') + '">' + esc(packText(n, r[1])) + '</div>' +
+      '<button class="pm" data-gm="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
+      '<button class="pm" data-gm="1" data-gi="' + esc(n) + '" aria-label="One more">+</button></div>';
+  }).join('');
+  box.innerHTML = h;
+}
+var gUndo = null, toastT = null;
+function toast(msg, undo) {
+  var t = $('toast');
+  t.innerHTML = esc(msg) + (undo ? ' <button id="tUndo">Undo</button>' : '');
+  t.style.display = 'flex';
+  gUndo = undo || null;
+  if (undo) $('tUndo').onclick = function () { var u = gUndo; gUndo = null; t.style.display = 'none'; if (u) u(); };
+  clearTimeout(toastT); toastT = setTimeout(function () { t.style.display = 'none'; gUndo = null; }, undo ? 5000 : 3000);
+}
+function gMove(n, packs, quiet) {
+  var q = packs * gPack(n);
+  var row = (gRows || []).filter(function (r) { return r[0] === n; })[0];
+  if (row) { row[1] = Math.round((row[1] + q) * 1000) / 1000; gRenderList(); }
+  rpc('gd_move', { p_token: TOKEN, p_godown: gd, p_item: n, p_qty: q, p_mode: 'add' }).then(function (r) {
+    if (row && r && typeof r.qty === 'number') { row[1] = r.qty; gRenderList(); }
+    if (!quiet) toast((packs > 0 ? '+' : '−') + Math.abs(packs) + ' ' + gPackName(n) + ' · ' + n, function () { gMove(n, -packs, true); });
+  }, function (e) {
+    if (row) { row[1] = Math.round((row[1] - q) * 1000) / 1000; gRenderList(); }
+    toast('⚠ Not saved — ' + errMsg(e));
+  });
+}
+function gOpenHist(n) { gItem = n; gLedger = null; gview = 'hist'; gRender(); busy = false; refresh(true); }
+function gRenderHist() {
+  var n = gItem, L = gLedger, v = $('view');
+  var h = '<div class="lhead"><button class="back" data-gback="1">‹ ' + esc(gd) + '</button><h3>' + esc(n) + '</h3>';
+  if (!L || String(L.item).toLowerCase() !== n.toLowerCase()) { v.innerHTML = h + '<div class="sub2">Loading…</div></div>'; return; }
+  h += '<div class="now' + (L.total < 0 ? ' neg' : '') + '">' + esc(packText(n, L.total)) + '</div><div class="sub2">in ' + esc(gd) + ' now</div>' +
+    '<div class="gset">Counted:<input id="gcB" type="number" inputmode="decimal" min="0" step="any" placeholder="0"> ' + esc(gPackName(n)) +
+    (gPack(n) > 1 ? ' + <input id="gcL" type="number" inputmode="decimal" min="0" step="any" placeholder="0"> ' + esc(baseText(n)) : '') +
+    '<button data-gcount="1">Set</button></div></div>';
+  var rows = L.rows || [];
+  if (!rows.length) h += '<div class="empty">No movement yet</div>';
+  h += rows.map(function (r) {
+    var word = r.kind === 'OUT list' ? 'from OUT #' + r.no : r.kind === 'count' ? 'counted' : r.kind === 'plus' ? 'added' : 'taken out';
+    return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
+      '<div class="li">' + esc(word) + '</div></div><div class="m"><div class="mv ' + (r.qty < 0 ? 'out' : 'in') + '">' +
+      (r.qty < 0 ? '−' : '+') + esc(packText(n, Math.abs(r.qty))) + '</div><div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' +
+      esc(packText(n, r.bal)) + '</div></div></div>';
+  }).join('');
+  if (gRows && gRows.some(function (r) { return r[0] === n && r[2]; }) && !L.total)
+    h += '<button class="gbig grey" data-gunpin="1">Take ' + esc(n) + ' off the ' + esc(gd) + ' list</button>';
+  v.innerHTML = h;
+}
+function gSetCount() {
+  var b = Number($('gcB').value || 0), l = $('gcL') ? Number($('gcL').value || 0) : 0;
+  if (!(b >= 0) || !(l >= 0)) { toast('Type the count'); return; }
+  var total = b * gPack(gItem) + l;
+  rpc('gd_move', { p_token: TOKEN, p_godown: gd, p_item: gItem, p_qty: total, p_mode: 'count' }).then(function () {
+    toast(gItem + ' set to ' + packText(gItem, total)); gLedger = null; gRenderHist(); busy = false; refresh(true);
+  }, function (e) { toast('⚠ ' + errMsg(e)); });
+}
+function gBack() { gview = 'list'; gItem = ''; gLedger = null; gTake = null; $('view').innerHTML = ''; gRender(); busy = false; refresh(true); }
+
+/* 📥 From an OUT list: its items of this godown's categories come ticked; others can be ticked by hand */
+function gOpenLists() {
+  gview = 'lists'; gLists = null; gRender();
+  rpc('gd_out_lists', { p_token: TOKEN, p_godown: gd }).then(function (r) { gLists = r || []; if (gview === 'lists') gRender(); },
+    function (e) { gLists = []; toast('⚠ ' + errMsg(e)); gRender(); });
+}
+function gRenderLists() {
+  var h = '<div class="lhead"><button class="back" data-gback="1">‹ ' + esc(gd) + '</button><h3>📥 From an OUT list</h3>' +
+    '<div class="sub2">Stock OUT lists of the last 10 days. Items of this godown\'s categories come ticked.</div></div>';
+  if (!gLists) h += '<div class="empty">Loading…</div>';
+  else if (!gLists.length) h += '<div class="empty">No Stock OUT lists in the last 10 days</div>';
+  else h += gLists.map(function (l, i) {
+    var mine = (l.lines || []).filter(function (x) { return x.mine; }).length;
+    return '<div class="gl' + (l.taken ? ' done' : '') + '" data-gl="' + i + '"><b>#' + l.no + (l.lname ? ' · ' + esc(l.lname) : '') + '</b>' +
+      '<small>' + (l.taken ? '✓ already in ' + esc(gd) : mine + ' of ' + (l.lines || []).length + ' items for ' + esc(gd)) +
+      ' · ' + esc(l.by || '') + ' · ' + esc(l.time || '') + '</small></div>';
+  }).join('');
+  $('view').innerHTML = h;
+}
+function gOpenTake(i) {
+  var l = gLists[i];
+  if (!l) return;
+  if (l.taken) { toast('OUT #' + l.no + ' is already in ' + gd); return; }
+  gTake = { no: l.no, lname: l.lname, lines: (l.lines || []).map(function (x) { return { row: x.row, item: x.item, qty: x.qty, unit: x.unit, on: !!x.mine, mine: !!x.mine }; }) };
+  gview = 'take'; gRender();
+}
+function gRenderTake() {
+  var T = gTake, n = T.lines.filter(function (x) { return x.on; }).length;
+  var h = '<div class="lhead"><button class="back" data-gv="lists">‹ OUT lists</button><h3>OUT #' + T.no + (T.lname ? ' · ' + esc(T.lname) : '') + '</h3>' +
+    '<div class="sub2">Tick what went to ' + esc(gd) + ' and check the quantities.</div>';
+  h += T.lines.map(function (x, i) {
+    return '<div class="gt"><input type="checkbox" data-gtc="' + i + '"' + (x.on ? ' checked' : '') + '>' +
+      '<div class="nm">' + esc(x.item) + (x.mine ? '' : '<small>not a ' + esc(gd) + ' category</small>') + '</div>' +
+      '<input type="number" inputmode="decimal" min="0" step="any" data-gtq="' + i + '" value="' + esc(fmt(x.qty)) + '">' +
+      '<span class="u">' + unitHtml(x.item, x.unit) + '</span></div>';
+  }).join('');
+  h += '<button class="gbig" data-gtake="1"' + (n ? '' : ' disabled') + '>Add ' + n + ' item' + (n === 1 ? '' : 's') + ' to ' + esc(gd) + '</button></div>';
+  $('view').innerHTML = h;
+}
+function gDoTake(btn) {
+  var lines = gTake.lines.filter(function (x) { return x.on && Number(x.qty) > 0; }).map(function (x) { return { row: x.row, qty: Number(x.qty), unit: x.unit }; });
+  if (!lines.length) { toast('Tick at least one item'); return; }
+  btn.disabled = true; btn.textContent = 'Adding…';
+  rpc('gd_take', { p_token: TOKEN, p_godown: gd, p_no: gTake.no, p_lines: lines }).then(function (r) {
+    toast('📥 ' + r.added + ' item' + (r.added === 1 ? '' : 's') + ' added to ' + gd);
+    gBack();
+  }, function (e) { btn.disabled = false; btn.textContent = 'Try again'; toast('⚠ ' + errMsg(e)); });
+}
+
+/* ＋ Add item: any item can be put on the godown's list */
+var gaq = '';
+function gRenderAdd() {
+  var v = $('view');
+  if (!$('gaq')) {
+    v.innerHTML = '<div class="lhead"><button class="back" data-gback="1">‹ ' + esc(gd) + '</button><h3>＋ Add an item to ' + esc(gd) + '</h3></div>' +
+      '<div class="fs"><input id="gaq" type="search" placeholder="🔍 Type the item name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div id="galist"></div>';
+    $('gaq').value = gaq;
+    $('gaq').oninput = function () { gaq = this.value; gRenderAddList(); };
+    setTimeout(function () { $('gaq').focus(); }, 50);
+  }
+  gRenderAddList();
+}
+function gRenderAddList() {
+  var toks = norm(gaq) ? norm(gaq).split(' ') : [];
+  var on = {}; (gRows || []).forEach(function (r) { on[r[0].toLowerCase()] = true; });
+  var list = Object.keys(pack).filter(function (n) {
+    if (on[n.toLowerCase()]) return false;
+    if (!toks.length) return false;
+    var tx = norm(n + ' ' + ((pack[n] || [])[4] || ''));
+    return toks.every(function (k) { return tx.indexOf(k) >= 0; });
+  }).slice(0, 40);
+  $('galist').innerHTML = !toks.length ? '<div class="empty">Type a few letters</div>'
+    : list.length ? list.map(function (n) { return '<div class="gl" data-gadd="' + esc(n) + '"><b>' + esc(n) + '</b><small>' + esc(gPackName(n)) + '</small></div>'; }).join('')
+    : '<div class="empty">No item matches (or it is already on the list)</div>';
+}
+function gAdd(n) {
+  rpc('gd_pin', { p_token: TOKEN, p_godown: gd, p_item: n, p_on: true }).then(function () {
+    toast('＋ ' + n + ' is on the ' + gd + ' list'); gaq = ''; gBack();
+  }, function (e) { toast('⚠ ' + errMsg(e)); });
+}
+function gUnpin() {
+  rpc('gd_pin', { p_token: TOKEN, p_godown: gd, p_item: gItem, p_on: false }).then(function () { toast(gItem + ' taken off the list'); gBack(); },
+    function (e) { toast('⚠ ' + errMsg(e)); });
+}
+
 /* ---------- start ---------- */
 window.onload = function () {
+  $('modes').addEventListener('click', function (ev) { var b = ev.target.closest('[data-gd]'); if (b) setGodown(b.getAttribute('data-gd')); });
+  $('view').addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t.hasAttribute('data-gtc')) { gTake.lines[Number(t.getAttribute('data-gtc'))].on = t.checked; gRenderTake(); }
+  });
+  $('view').addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.hasAttribute('data-gtq')) gTake.lines[Number(t.getAttribute('data-gtq'))].qty = t.value;
+  });
   $('view').addEventListener('click', function (ev) {
+    var g;
+    if ((g = ev.target.closest('[data-gm]'))) { gMove(g.getAttribute('data-gi'), Number(g.getAttribute('data-gm'))); return; }
+    if ((g = ev.target.closest('[data-gh]'))) { gOpenHist(g.getAttribute('data-gh')); return; }
+    if ((g = ev.target.closest('[data-gback]'))) { gBack(); return; }
+    if ((g = ev.target.closest('[data-gv]'))) { var w = g.getAttribute('data-gv'); if (w === 'lists') gOpenLists(); else { gview = w; gaq = ''; $('view').innerHTML = ''; gRender(); } return; }
+    if ((g = ev.target.closest('[data-gl]'))) { gOpenTake(Number(g.getAttribute('data-gl'))); return; }
+    if ((g = ev.target.closest('[data-gtake]'))) { gDoTake(g); return; }
+    if ((g = ev.target.closest('[data-gadd]'))) { gAdd(g.getAttribute('data-gadd')); return; }
+    if (ev.target.closest('[data-gcount]')) { gSetCount(); return; }
+    if (ev.target.closest('[data-gunpin]')) { gUnpin(); return; }
     var b = ev.target.closest('[data-sk]');
     if (b) { openItem(b.getAttribute('data-sk')); return; }
     if (ev.target.closest('[data-back]')) { back(); return; }
@@ -396,6 +650,8 @@ window.onload = function () {
     if (leaving) return;
     if (!$('me').hidden) $('me').hidden = true;
     else if (!$('leave').hidden) $('leave').hidden = true;
+    else if (gd && gview === 'take') { gview = 'lists'; gRender(); }
+    else if (gd && gview !== 'list') gBack();
     else if (item) back();
     else $('leave').hidden = false;
     armBack();

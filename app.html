@@ -284,11 +284,48 @@
 
   #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:8px;
          font-size:14px;max-width:90%;text-align:center;display:none;z-index:30;pointer-events:none}
+
+  .nl{display:block;font-size:12px;color:var(--muted);margin-top:9px}
+  .nl .in1{margin-top:3px;font-size:16px;padding:9px 10px}
+  .nh{font-size:11px;color:#9aa3a0}
+  .nrow{display:flex;gap:8px}.nrow .nl{flex:1;min-width:0}
+  .nchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .nchips button{border:1px solid #d5d9dc;background:#fff;border-radius:14px;padding:4px 10px;font-size:12px;color:#444}
+  .nerr{min-height:18px;font-size:13px;color:var(--red);margin-top:8px}
+  #ni .mbox{max-height:92vh;overflow-y:auto}
+  .newit{display:block;width:100%;border:1px dashed #c5ccd0;background:#fff;border-radius:10px;padding:10px;margin:8px 0 4px;font-size:14px;color:var(--hdr);font-weight:600}
+  /* ---- calm look: white cards, quiet labels, one strong button per card ---- */
+  :root{--bg:#f1f2f4;--out:#fff;--in:#fff;--orange:#9a6a2a}
+  .row,.row.r{justify-content:stretch}
+  .b{max-width:100%;width:100%;box-shadow:none;border:1px solid #e2e5e8;border-radius:10px}
+  .l .b,.r .b{background:#fff;border-radius:10px}
+  .entry.done{opacity:.7}
+  .tag{background:none !important;border:1px solid currentColor;font-weight:600;font-size:10px;letter-spacing:.04em;padding:1px 5px;border-radius:4px}
+  .tag.in{color:#1f7a5c}.tag.out{color:#b23b36}.tag.tr{color:#6b7280;border-color:#cfd4d8}
+  .lrh{font-size:15px}
+  .cnt{font-size:12px;color:var(--muted)}
+  .tl small,.tl small.part,.lt small{color:var(--muted);font-weight:400;font-size:12px}
+  .ta button{font-size:13px;font-weight:600;padding:8px 0;border-radius:8px}
+  .ra{background:#fff;color:var(--hdr);border:1px solid var(--hdr) !important}
+  .rp{background:#fff;color:#555;border:1px solid #cfd4d8 !important}
+  .rall{background:var(--hdr);font-size:14px;font-weight:600;padding:10px}
+  .pok{background:var(--hdr)}
+  .pp input{border-color:#cfd4d8}
+  .ru{color:#8a8f94}
+  .edb{border:1px solid #d5d9dc;color:#555}
+  .edtr{background:#f8f9fa;border-color:#dfe3e6}.edtr .bt{color:#444}.edtr input{border-color:#cfd4d8}
+  .eds{background:var(--hdr)}
+  .er .nm small,.sk .nm small{color:var(--muted)}
+  .seg.t button.on{background:var(--hdr);border-color:var(--hdr)}
+  .tabs button.on.t,.tabs button.on.o{border-bottom-color:#fff}
+  .bd{background:rgba(255,255,255,.22)}
+  .lhead .trn{color:#555}
+  .ev,.sk,.lg,.card,.lhead,.dsum,.dlist{box-shadow:none;border:1px solid #e2e5e8}
 </style>
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v16</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v17</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -330,6 +367,24 @@
     <div class="hint">Your entries are saved in your name.</div>
     <button class="ok" id="meOut" style="background:#d9534f">Log out</button>
     <button class="ok" id="meClose" style="background:#eee;color:#555;margin-top:6px">Close</button>
+  </div>
+</div>
+<div class="modal" id="ni" hidden>
+  <div class="mbox">
+    <b>➕ New item</b>
+    <div class="hint">It can be used straight away, and is added to the Items sheet within a few minutes (marked yellow for the owner to check).</div>
+    <label class="nl">Item name<input class="in1" id="niName" autocomplete="off" autocapitalize="characters"></label>
+    <label class="nl">Loose unit <span class="nh">(the smallest count: PC, KG, DZ…)</span><input class="in1" id="niLu" autocomplete="off" autocapitalize="characters" placeholder="PC"></label>
+    <div class="nchips" id="niLuChips"></div>
+    <div class="nrow"><label class="nl">Big pack name<input class="in1" id="niBn" autocomplete="off" autocapitalize="characters" placeholder="BAG, CTN…"></label>
+      <label class="nl">Loose in it<input class="in1" id="niBag" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 48"></label></div>
+    <div class="nrow"><label class="nl">Small pack name<input class="in1" id="niSn" autocomplete="off" autocapitalize="characters" placeholder="optional"></label>
+      <label class="nl">Loose in it<input class="in1" id="niMini" type="number" inputmode="decimal" min="0" step="any" placeholder="optional"></label></div>
+    <label class="nl">Category <span class="nh">(optional)</span><input class="in1" id="niCat" list="niCats" autocomplete="off"></label>
+    <datalist id="niCats"></datalist>
+    <div class="nerr" id="niErr"></div>
+    <button class="ok" id="niOk">Add item</button>
+    <button class="ok" id="niNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
   </div>
 </div>
 <div class="modal" id="pm" hidden>
@@ -406,6 +461,7 @@ function rpcCall(fn, body) {
 var TOKEN = '';
 function tk() { return TOKEN; }
 var RPC = {
+  addItem:     function (p) { return ['add_item', { p_token: tk(), p: p }]; },
   getState:    function (v) { return ['get_state', { p_token: tk(), p_ver: v || '' }]; },
   saveEntry:   function (p) { return ['save_entry', { p_token: tk(), p: p }]; },
   setChecked:  function (row, no, c) { return ['set_checked', { p_token: tk(), p_line: row, p_no: no, p_checked: !!c }]; },
@@ -433,7 +489,7 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '16';
+var APP_VER = '17';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
@@ -794,7 +850,7 @@ function renderTabs() {
   }
   var list = allEntries();
   var nT = list.filter(function (e) { return e.type === TR_TYPE && !allDone(e); }).length;
-  var nL = list.filter(function (e) { return !allDone(e); }).length;
+  var nL = list.filter(function (e) { return e.type !== TR_TYPE && !allDone(e); }).length;   // LRs count only under Transport
   $('bT').textContent = nT || '';
   $('bL').textContent = nL || '';
 }
@@ -820,7 +876,7 @@ function renderView() {
     h += '<div class="fs"><input id="fq" data-fq="tr" type="search" placeholder="🔍 Search LR no, transport, party, item" ' +
       'autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="' + esc(fqText.tr) + '"></div><div id="listArea"></div>';
   } else {
-    var nL = allEntries().filter(function (e) { return !allDone(e); }).length;
+    var nL = allEntries().filter(function (e) { return e.type !== TR_TYPE && !allDone(e); }).length;
     h += '<div class="seg"><button data-lv="act"' + (listView === 'act' ? ' class="on"' : '') + '>All activity</button>' +
       '<button data-lv="pending"' + (listView === 'pending' ? ' class="on"' : '') + '>Pending lists' + (nL ? ' (' + nL + ')' : '') + '</button></div>' +
       (listView === 'act' ? '<div class="seg">' + [['all', 'All'], ['IN', '📥 Stock IN'], ['OUT', '📤 Stock OUT'], ['TR', '🚚 Transport']].map(function (x) {
@@ -955,7 +1011,9 @@ function renderResults(q) {
   res.sort(function (a, b) { return a.s - b.s || a.p - b.p || a.it.name.length - b.it.name.length || a.it.i - b.it.i; });
   res = res.slice(0, 30);
   lastPick = res.map(function (x) { return x.it.i; });
-  if (!res.length) { r.innerHTML = '<div class="none">No item matches "' + esc(qq ? qm[1] : q) + '" — add it in the Items sheet.</div>'; return; }
+  var newName = String(qq ? qm[1] : q).trim();
+  var newBtn = '<button class="newit" data-newitem="' + esc(newName) + '">➕ Add “' + esc(newName) + '” as a new item</button>';
+  if (!res.length) { r.innerHTML = '<div class="none">No item matches "' + esc(newName) + '"</div>' + newBtn; return; }
   var tok = toks[0];
   if (qq) {
     // items whose own name ends with this number (e.g. "Hello 5") stay choosable as an item
@@ -977,7 +1035,7 @@ function renderResults(q) {
         (us.length > 1 ? '<div class="qalt">' + us.slice(1).map(function (u) {
           return '<button class="qu" data-qa="' + x.it.i + '" data-u="' + esc(u) + '" data-q="' + qq + '">' + fmt(qq) + ' ' + unitHtml(name, u) + '</button>';
         }).join('') + '</div>' : '') + '</div>';
-    }).join('');
+    }).join('') + newBtn.replace('newit"', 'newit" style="margin-top:12px"').replace('as a new item', '— not in the list? Add it');
     lastQty = qq;
     return;
   }
@@ -986,7 +1044,7 @@ function renderResults(q) {
     return '<button class="opt" data-pick="' + x.it.i + '">' + highlight(x.it.name, tok) +
       (x.via ? ' <span class="pcs">(' + highlight(x.via, tok) + ')</span>' : '') +
       packLine(x.it.name) + '</button>';
-  }).join('');
+  }).join('') + newBtn.replace('newit"', 'newit" style="margin-top:12px"').replace('as a new item', '— not in the list? Add it');
 }
 
 function renderEntry() {
@@ -1268,7 +1326,7 @@ function renderList() {
     renderActivity(area);
     return;
   } else {
-    show = list.filter(function (e) { return !allDone(e); });
+    show = list.filter(function (e) { return e.type !== TR_TYPE && !allDone(e); });   // pending LRs live under Transport
     show.reverse();   // newest first
     fq = norm(fqText.lists);
     emptyMsg = 'Nothing pending 👍';
@@ -1281,7 +1339,7 @@ function renderList() {
     });
     emptyMsg = 'Nothing matches your search';
   }
-  area.innerHTML = show.length ? show.map(entryHtml).join('') : '<div class="empty">' + emptyMsg + '</div>';
+  area.innerHTML = show.length ? show.map(function (e) { return entryHtml(e); }).join('') : '<div class="empty">' + emptyMsg + '</div>';
 }
 
 /* ---------- data from the sheet ---------- */
@@ -1349,6 +1407,53 @@ function poll(force) {
     .getState(force ? '' : ver);
 }
 
+/* ---------- ➕ new item, from the phone ---------- */
+function openNewItem(name) {
+  $('niName').value = String(name || '').toUpperCase();
+  ['niLu', 'niBn', 'niBag', 'niSn', 'niMini', 'niCat'].forEach(function (id) { $(id).value = ''; });
+  $('niErr').textContent = '';
+  var lus = {}, cats = {};
+  Object.keys(pack).forEach(function (n) {
+    var p = pack[n] || [];
+    if (p[2]) lus[String(p[2]).toUpperCase()] = (lus[String(p[2]).toUpperCase()] || 0) + 1;
+    if (p[3]) cats[String(p[3]).trim()] = 1;
+  });
+  var top = Object.keys(lus).sort(function (a, b) { return lus[b] - lus[a]; }).slice(0, 6);
+  if (!top.length) top = ['PC', 'KG', 'DZ'];
+  $('niLuChips').innerHTML = top.map(function (u) { return '<button type="button" data-lu="' + esc(u) + '">' + esc(u) + '</button>'; }).join('');
+  $('niCats').innerHTML = Object.keys(cats).sort().map(function (c) { return '<option value="' + esc(c) + '">'; }).join('');
+  $('ni').hidden = false;
+  setTimeout(function () { (name ? $('niLu') : $('niName')).focus(); }, 60);
+}
+function saveNewItem() {
+  var p = { name: $('niName').value.trim(), lu: $('niLu').value.trim(), bn: $('niBn').value.trim(), bag: $('niBag').value.trim(),
+            sn: $('niSn').value.trim(), mini: $('niMini').value.trim(), cat: $('niCat').value.trim() };
+  if (!p.name) { $('niErr').textContent = 'Type the item name'; $('niName').focus(); return; }
+  if (!p.lu) { $('niErr').textContent = 'Type the loose unit (PC, KG…)'; $('niLu').focus(); return; }
+  if (p.bag && !p.bn) { $('niErr').textContent = 'Name the big pack (BAG, CTN…)'; $('niBn').focus(); return; }
+  if (p.bn && !(Number(p.bag) > 0)) { $('niErr').textContent = 'How many ' + p.lu.toUpperCase() + ' are in one ' + p.bn.toUpperCase() + '?'; $('niBag').focus(); return; }
+  if (p.mini && !p.sn) { $('niErr').textContent = 'Name the small pack'; $('niSn').focus(); return; }
+  if (p.sn && !(Number(p.mini) > 0)) { $('niErr').textContent = 'How many ' + p.lu.toUpperCase() + ' are in one ' + p.sn.toUpperCase() + '?'; $('niMini').focus(); return; }
+  $('niOk').disabled = true; $('niOk').textContent = 'Adding…'; $('niErr').textContent = '';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      $('niOk').disabled = false; $('niOk').textContent = 'Add item';
+      $('ni').hidden = true;
+      var nm = (r && r.name) || p.name;
+      toast('➕ ' + nm + ' added');
+      google.script.run.withSuccessHandler(function (d) {
+        if (d) applyState(d);
+        var i = items.indexOf(nm);
+        if (i >= 0) choose(i, 0);
+      }).withFailureHandler(function () {}).getState('');
+    })
+    .withFailureHandler(function (e) {
+      $('niOk').disabled = false; $('niOk').textContent = 'Add item';
+      $('niErr').textContent = errMsg(e);
+    })
+    .addItem(p);
+}
+
 /* ---------- actions on saved lists ---------- */
 function serverCall(key, fnName, args, okMsg, onFail) {
   busy[key] = true;
@@ -1404,6 +1509,7 @@ function onClick(ev) {
 
   // entry
   if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
+  if ((b = t.closest('[data-newitem]'))) { openNewItem(b.getAttribute('data-newitem')); return; }
   if ((b = t.closest('[data-pick]'))) { choose(Number(b.getAttribute('data-pick')), Number(b.getAttribute('data-q') || 0)); return; }
   if ((b = t.closest('.u'))) { addLine(b.getAttribute('data-u')); return; }
   if ((b = t.closest('[data-dn]'))) {
@@ -1789,7 +1895,7 @@ function rpInit() {
 function onBack() {
   if (leaving) return;
   var shut = function (id) { var m = $(id); if (m && !m.hidden) { m.hidden = true; return true; } return false; };
-  var handled = shut('leave') || shut('pm') || shut('me') || shut('rp');
+  var handled = shut('leave') || shut('ni') || shut('pm') || shut('me') || shut('rp');
   if (!handled && Object.keys(editing).length) { editing = {}; renderList(); handled = true; }
   if (!handled && Object.keys(partOpen).length) { partOpen = {}; renderList(); handled = true; }
   if (!handled && !$('noteBox').hidden) { $('noteBox').hidden = true; handled = true; }
@@ -1869,6 +1975,9 @@ window.onload = function () {
   });
   $('pmOk').onclick = pinOk;
   $('pmNo').onclick = function () { $('pm').hidden = true; pinCb = null; };
+  $('niOk').onclick = saveNewItem;
+  $('niNo').onclick = function () { $('ni').hidden = true; };
+  $('niLuChips').onclick = function (ev) { var b = ev.target.closest('[data-lu]'); if (b) { $('niLu').value = b.getAttribute('data-lu'); $('niBn').focus(); } };
   $('pmIn').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); pinOk(); } };
   v.addEventListener('focusin', function (ev) {
     if (ev.target.id === 'srch') {
