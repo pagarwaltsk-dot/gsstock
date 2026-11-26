@@ -285,6 +285,15 @@
   #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:8px;
          font-size:14px;max-width:90%;text-align:center;display:none;z-index:30;pointer-events:none}
 
+  .gdb{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .gdb button{flex:1;border:1px solid var(--hdr);background:#fff;color:var(--hdr);border-radius:8px;padding:9px 6px;font-size:13px;font-weight:600}
+  .gdb .gdd{flex:1;text-align:center;font-size:12px;color:var(--muted);border:1px dashed #d5d9dc;border-radius:8px;padding:8px 6px}
+  #gdm .mbox{max-height:92vh;overflow-y:auto}
+  .gdt{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eef0f1;font-size:14px}
+  .gdt input[type=checkbox]{width:20px;height:20px;accent-color:var(--hdr);flex-shrink:0}
+  .gdt .nm{flex:1;min-width:0}.gdt .nm small{display:block;font-size:11px;color:var(--muted)}
+  .gdt input[type=number]{width:64px;font-size:15px;padding:6px;border:1px solid #cfd4d8;border-radius:8px;text-align:center}
+  .gdt .gu{font-size:12px;color:var(--muted);min-width:40px;white-space:nowrap}
   .nl{display:block;font-size:12px;color:var(--muted);margin-top:9px}
   .nl .in1{margin-top:3px;font-size:16px;padding:9px 10px}
   .nh{font-size:11px;color:#9aa3a0}
@@ -325,7 +334,7 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v17</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v18</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -367,6 +376,16 @@
     <div class="hint">Your entries are saved in your name.</div>
     <button class="ok" id="meOut" style="background:#d9534f">Log out</button>
     <button class="ok" id="meClose" style="background:#eee;color:#555;margin-top:6px">Close</button>
+  </div>
+</div>
+<div class="modal" id="gdm" hidden>
+  <div class="mbox">
+    <b id="gdmT">📥 Add to godown</b>
+    <div class="hint" id="gdmH"></div>
+    <div id="gdmL"></div>
+    <div class="nerr" id="gdmErr"></div>
+    <button class="ok" id="gdmOk">Add</button>
+    <button class="ok" id="gdmNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
   </div>
 </div>
 <div class="modal" id="ni" hidden>
@@ -461,6 +480,7 @@ function rpcCall(fn, body) {
 var TOKEN = '';
 function tk() { return TOKEN; }
 var RPC = {
+  gdTake:      function (g, no, lines) { return ['gd_take', { p_token: tk(), p_godown: g, p_no: no, p_lines: lines }]; },
   addItem:     function (p) { return ['add_item', { p_token: tk(), p: p }]; },
   getState:    function (v) { return ['get_state', { p_token: tk(), p_ver: v || '' }]; },
   saveEntry:   function (p) { return ['save_entry', { p_token: tk(), p: p }]; },
@@ -489,7 +509,7 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '17';
+var APP_VER = '18';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
@@ -662,7 +682,7 @@ function setName(n) {
 }
 
 /* ---------- login (each person has their own PIN in the Staff sheet) ---------- */
-var loginName = '', seeStock = false;
+var loginName = '', seeStock = false, godowns = [], gdcats = {}, gdPick = null;
 function showLogin(msg) {
   $('login').hidden = false;
   $('lStep1').hidden = false; $('lStep2').hidden = true;
@@ -1219,6 +1239,12 @@ function entryHtml(e, forceOpen) {
         '</span></label>';
     });
   }
+  if (isOut && godowns.length && !editing[e.no]) {
+    h += '<div class="gdb">' + godowns.map(function (g) {
+      return (e.gd || []).indexOf(g) >= 0 ? '<span class="gdd">✓ Added to ' + esc(g) + '</span>'
+        : '<button data-gdadd="' + e.no + '" data-gdn="' + esc(g) + '">📥 Add to ' + esc(g) + '</button>';
+    }).join('') + '</div>';
+  }
   if (!editing[e.no]) h += '<button class="edl" data-edit="' + e.no + '">🔒 Edit list (PIN)</button>';
   h += '</div><div class="meta">' + esc(e.time) + (e.by ? ' · ' + esc(e.by) : '') + '</div></div></div>';
   return h;
@@ -1366,6 +1392,7 @@ function applyState(d, fromCache) {
   $('itList').innerHTML = items.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   $('lnList').innerHTML = lnames.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   if (d.units && d.units.length) UNITS = d.units;
+  godowns = d.godowns || []; gdcats = d.gdcats || {};
 
   var next = {}, fresh = [];
   (d.entries || []).forEach(function (e) {
@@ -1405,6 +1432,50 @@ function poll(force) {
       if (!loaded) { var b = $('entry'); if (b) b.innerHTML = '<div class="card">Could not load — ' + esc(errMsg(err)) + '</div>'; }
     })
     .getState(force ? '' : ver);
+}
+
+/* ---------- 📥 add an OUT list's items to another godown (R(G)…) — Staff "Other godowns = Yes" only ---------- */
+function openGdAdd(no, g) {
+  var e = entries[no];
+  if (!e) return;
+  var cats = String(gdcats[g] || '').split(',').map(function (c) { return c.trim().toLowerCase(); }).filter(Boolean);
+  gdPick = { no: no, g: g, lines: e.lines.map(function (l) {
+    var c = String((pack[l.item] || [])[3] || '').trim().toLowerCase(), mine = cats.indexOf(c) >= 0;
+    return { row: l.row, item: l.item, qty: l.qty, unit: l.unit, on: mine, mine: mine };
+  }) };
+  $('gdmT').textContent = '📥 Add to ' + g;
+  $('gdmH').textContent = (e.lname ? e.lname + ' · ' : '') + '#' + no + ' — tick what went to ' + g + ' and check the quantities.' +
+    (cats.length ? ' Items of ' + gdcats[g] + ' come ticked.' : '');
+  $('gdmErr').textContent = '';
+  paintGdAdd();
+  $('gdm').hidden = false;
+}
+function paintGdAdd() {
+  var P = gdPick, n = P.lines.filter(function (x) { return x.on; }).length;
+  $('gdmL').innerHTML = P.lines.map(function (x, i) {
+    return '<div class="gdt"><input type="checkbox" data-gdc="' + i + '"' + (x.on ? ' checked' : '') + '>' +
+      '<div class="nm">' + esc(x.item) + (x.mine ? '' : '<small>not a ' + esc(P.g) + ' item</small>') + '</div>' +
+      '<input type="number" inputmode="decimal" min="0" step="any" data-gdq="' + i + '" value="' + esc(fmt(x.qty)) + '">' +
+      '<span class="gu">' + unitHtml(x.item, x.unit) + '</span></div>';
+  }).join('');
+  $('gdmOk').disabled = !n;
+  $('gdmOk').textContent = 'Add ' + n + ' item' + (n === 1 ? '' : 's') + ' to ' + P.g;
+}
+function saveGdAdd() {
+  var P = gdPick;
+  var lines = P.lines.filter(function (x) { return x.on && Number(x.qty) > 0; }).map(function (x) { return { row: x.row, qty: Number(x.qty), unit: x.unit }; });
+  if (!lines.length) { $('gdmErr').textContent = 'Tick at least one item'; return; }
+  $('gdmOk').disabled = true; $('gdmOk').textContent = 'Adding…';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      $('gdm').hidden = true;
+      var e = entries[P.no];
+      if (e) { e.gd = (e.gd || []).concat([P.g]); renderList(); }
+      toast('📥 ' + ((r && r.added) || lines.length) + ' item(s) added to ' + P.g);
+      poll(true);
+    })
+    .withFailureHandler(function (err) { $('gdmErr').textContent = errMsg(err); paintGdAdd(); })
+    .gdTake(P.g, P.no, lines);
 }
 
 /* ---------- ➕ new item, from the phone ---------- */
@@ -1509,6 +1580,7 @@ function onClick(ev) {
 
   // entry
   if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
+  if ((b = t.closest('[data-gdadd]'))) { openGdAdd(Number(b.getAttribute('data-gdadd')), b.getAttribute('data-gdn')); return; }
   if ((b = t.closest('[data-newitem]'))) { openNewItem(b.getAttribute('data-newitem')); return; }
   if ((b = t.closest('[data-pick]'))) { choose(Number(b.getAttribute('data-pick')), Number(b.getAttribute('data-q') || 0)); return; }
   if ((b = t.closest('.u'))) { addLine(b.getAttribute('data-u')); return; }
@@ -1895,7 +1967,7 @@ function rpInit() {
 function onBack() {
   if (leaving) return;
   var shut = function (id) { var m = $(id); if (m && !m.hidden) { m.hidden = true; return true; } return false; };
-  var handled = shut('leave') || shut('ni') || shut('pm') || shut('me') || shut('rp');
+  var handled = shut('leave') || shut('gdm') || shut('ni') || shut('pm') || shut('me') || shut('rp');
   if (!handled && Object.keys(editing).length) { editing = {}; renderList(); handled = true; }
   if (!handled && Object.keys(partOpen).length) { partOpen = {}; renderList(); handled = true; }
   if (!handled && !$('noteBox').hidden) { $('noteBox').hidden = true; handled = true; }
@@ -1976,6 +2048,10 @@ window.onload = function () {
   $('pmOk').onclick = pinOk;
   $('pmNo').onclick = function () { $('pm').hidden = true; pinCb = null; };
   $('niOk').onclick = saveNewItem;
+  $('gdmOk').onclick = saveGdAdd;
+  $('gdmNo').onclick = function () { $('gdm').hidden = true; };
+  $('gdmL').onchange = function (ev) { var t = ev.target; if (t.hasAttribute('data-gdc')) { gdPick.lines[Number(t.getAttribute('data-gdc'))].on = t.checked; paintGdAdd(); } };
+  $('gdmL').oninput = function (ev) { var t = ev.target; if (t.hasAttribute('data-gdq')) gdPick.lines[Number(t.getAttribute('data-gdq'))].qty = t.value; };
   $('niNo').onclick = function () { $('ni').hidden = true; };
   $('niLuChips').onclick = function (ev) { var b = ev.target.closest('[data-lu]'); if (b) { $('niLu').value = b.getAttribute('data-lu'); $('niBn').focus(); } };
   $('pmIn').onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); pinOk(); } };
