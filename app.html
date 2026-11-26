@@ -287,6 +287,8 @@
 
   .gdb{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .gdb button{flex:1;border:1px solid var(--hdr);background:#fff;color:var(--hdr);border-radius:8px;padding:9px 6px;font-size:13px;font-weight:600}
+  .gdb .gdx{flex:0 0 auto;border-color:#cfd4d8;color:#666}
+  .gdb .gdd a{color:var(--hdr);font-weight:600}
   .gdb .gdd{flex:1;text-align:center;font-size:12px;color:var(--muted);border:1px dashed #d5d9dc;border-radius:8px;padding:8px 6px}
   #gdm .mbox{max-height:92vh;overflow-y:auto}
   .gdt{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eef0f1;font-size:14px}
@@ -334,7 +336,7 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v18</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v20</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -480,6 +482,7 @@ function rpcCall(fn, body) {
 var TOKEN = '';
 function tk() { return TOKEN; }
 var RPC = {
+  gdHide:      function (g, no, on) { return ['gd_hide_list', { p_token: tk(), p_godown: g, p_no: no, p_hide: !!on }]; },
   gdTake:      function (g, no, lines) { return ['gd_take', { p_token: tk(), p_godown: g, p_no: no, p_lines: lines }]; },
   addItem:     function (p) { return ['add_item', { p_token: tk(), p: p }]; },
   getState:    function (v) { return ['get_state', { p_token: tk(), p_ver: v || '' }]; },
@@ -509,7 +512,7 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '18';
+var APP_VER = '20';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
@@ -1204,10 +1207,10 @@ function entryHtml(e, forceOpen) {
     h += '<div class="eh" data-no="' + e.no + '">' + (all ? '<span class="tag in">RECEIVED</span>' : '<span class="tag tr">🚚</span>') +
       '<span class="lrh"><b>' + esc(e.transport) + '</b> · LR <b>' + esc(e.lr || '—') + '</b></span>' +
       '<span class="cnt">' + done + '/' + n + ' recd</span><span class="arr">' + (isOpen ? '▾' : '▸') + '</span></div>' +
-      '<div class="sub">#' + e.no + ' · ' + n + ' item' + (n > 1 ? 's' : '') + (e.from ? ' · ' + esc(e.from) : '') + '</div>';
+      '<div class="sub">' + n + ' item' + (n > 1 ? 's' : '') + (e.from ? ' · ' + esc(e.from) : '') + '</div>';
   } else {
     h += '<div class="eh" data-no="' + e.no + '">' + (isOut ? '<span class="tag out">OUT</span>' : '<span class="tag in">IN</span>') +
-      (e.lname ? '<b>' + esc(e.lname) + '</b> <span class="pcs">#' + e.no + '</span>' : '<b>#' + e.no + '</b>') +
+      (e.lname ? '<b>' + esc(e.lname) + '</b>' : '<span class="pcs">no name</span>') +
       ' · ' + n + ' item' + (n > 1 ? 's' : '') +
       '<span class="cnt">' + done + '/' + n + ' ✓</span><span class="arr">' + (isOpen ? '▾' : '▸') + '</span></div>';
   }
@@ -1241,8 +1244,11 @@ function entryHtml(e, forceOpen) {
   }
   if (isOut && godowns.length && !editing[e.no]) {
     h += '<div class="gdb">' + godowns.map(function (g) {
-      return (e.gd || []).indexOf(g) >= 0 ? '<span class="gdd">✓ Added to ' + esc(g) + '</span>'
-        : '<button data-gdadd="' + e.no + '" data-gdn="' + esc(g) + '">📥 Add to ' + esc(g) + '</button>';
+      if ((e.gd || []).indexOf(g) >= 0) return '<span class="gdd">✓ Added to ' + esc(g) + '</span>';
+      if ((e.gdno || []).indexOf(g) >= 0) return '<span class="gdd">— Not needed in ' + esc(g) +
+        ' · <a href="#" data-gdno="' + e.no + '" data-gdn="' + esc(g) + '" data-v="0">undo</a></span>';
+      return '<button data-gdadd="' + e.no + '" data-gdn="' + esc(g) + '">📥 Add to ' + esc(g) + '</button>' +
+        '<button class="gdx" data-gdno="' + e.no + '" data-gdn="' + esc(g) + '" data-v="1">✕ Not needed</button>';
     }).join('') + '</div>';
   }
   if (!editing[e.no]) h += '<button class="edl" data-edit="' + e.no + '">🔒 Edit list (PIN)</button>';
@@ -1253,15 +1259,20 @@ function entryHtml(e, forceOpen) {
 var SHOW_ACT = { 'Edited': 1, 'Saved': 1, 'Added to LR': 1, 'Received': 1, 'Part received': 1, 'Received full LR': 1 };
 var ACT_ICON = { 'Added to LR': '➕', 'Received': '✅', 'Received full LR': '✅', 'Part received': '🟠',
   'Edited': '✏️', 'Receipt undone': '↺', 'Ticked': '☑️', 'Unticked': '⬜', 'LR details changed': '✎' };
+function listName(a) {               // older activity rows say "Raju #12" or "#12" — the number is not shown
+  var t = String(a.list || '').replace(/\s*#\d+\s*$/, '').trim();
+  return t || (a.type === 'Stock Out' ? 'Stock OUT' : a.type === 'Stock In' ? 'Stock IN' : String(a.list || ''));
+}
 function evHtml(a) {
   var icon = a.action === 'Saved' ? (a.type === TR_TYPE ? '🚚' : a.type === 'Stock Out' ? '📤' : '📥') : (ACT_ICON[a.action] || '•');
-  var L = '<b>' + esc(a.list) + '</b>';
+  var L = '<b>' + esc(listName(a)) + '</b>';
   var it = a.item && a.qty !== '' && a.unit !== 'items' ? '<b>' + esc(a.item) + ' ' + fmt(a.qty) + ' ' + unitHtml(a.item, a.unit) + '</b>' : '';
   var cnt = a.unit === 'items' ? a.qty + ' item' + (a.qty > 1 ? 's' : '') : '';
   var t, sub = '';
   switch (a.action) {
     case 'Saved':
-      t = a.type === TR_TYPE ? 'booked transport ' + L : 'saved ' + (a.type === 'Stock Out' ? 'Stock OUT ' : 'Stock IN ') + L;
+      var bare = /^Stock (OUT|IN)$/.test(listName(a));        // a list with no name: don't say "Stock OUT Stock OUT"
+      t = a.type === TR_TYPE ? 'booked transport ' + L : 'saved ' + (a.type === 'Stock Out' ? 'Stock OUT' : 'Stock IN') + (bare ? '' : ' ' + L);
       if (cnt) t += ' · ' + cnt;
       sub = a.item; break;
     case 'Added to LR': t = 'added ' + cnt + ' to ' + L; sub = a.item; break;
@@ -1282,7 +1293,7 @@ function evHtml(a) {
   if (open) {
     var e = entries[a.no];
     if (!e && a.no) loadEntry(a.no);
-    h += e ? entryHtml(e, true) : '<div class="es" style="margin-top:6px">' + (a.no ? 'Opening list #' + a.no + '…' : 'No list details') + '</div>';
+    h += e ? entryHtml(e, true) : '<div class="es" style="margin-top:6px">' + (a.no ? 'Opening the list…' : 'No list details') + '</div>';
   }
   return h + '</div>';
 }
@@ -1416,7 +1427,7 @@ function applyState(d, fromCache) {
   }
   if (fresh.length) {
     var e = fresh[fresh.length - 1];
-    toast('🔔 New ' + (e.type === TR_TYPE ? 'transport LR ' + e.lr : 'list #' + e.no) + (e.by ? ' from ' + e.by : ''));
+    toast('🔔 New ' + (e.type === TR_TYPE ? 'transport LR ' + e.lr : 'list' + (e.lname ? ' ' + e.lname : '')) + (e.by ? ' from ' + e.by : ''));
   }
 }
 
@@ -1444,7 +1455,7 @@ function openGdAdd(no, g) {
     return { row: l.row, item: l.item, qty: l.qty, unit: l.unit, on: mine, mine: mine };
   }) };
   $('gdmT').textContent = '📥 Add to ' + g;
-  $('gdmH').textContent = (e.lname ? e.lname + ' · ' : '') + '#' + no + ' — tick what went to ' + g + ' and check the quantities.' +
+  $('gdmH').textContent = (e.lname ? e.lname + ' — ' : '') + 'tick what went to ' + g + ' and check the quantities.' +
     (cats.length ? ' Items of ' + gdcats[g] + ' come ticked.' : '');
   $('gdmErr').textContent = '';
   paintGdAdd();
@@ -1580,6 +1591,21 @@ function onClick(ev) {
 
   // entry
   if ((b = t.closest('[data-qa]'))) { quickAdd(Number(b.getAttribute('data-qa')), b.getAttribute('data-u'), Number(b.getAttribute('data-q'))); return; }
+  if ((b = t.closest('[data-gdno]'))) {
+    ev.preventDefault();
+    var gno = Number(b.getAttribute('data-gdno')), gg = b.getAttribute('data-gdn'), on = b.getAttribute('data-v') === '1', ge = entries[gno];
+    if (ge) {
+      ge.gdno = (ge.gdno || []).filter(function (x) { return x !== gg; });
+      if (on) ge.gdno.push(gg);
+      renderList();
+    }
+    google.script.run.withSuccessHandler(function () { var nm = ge && ge.lname ? ge.lname : 'List'; toast(on ? nm + ': not needed in ' + gg : nm + ': back to “Add to ' + gg + '”'); })
+      .withFailureHandler(function (err) {
+        if (ge) { ge.gdno = (ge.gdno || []).filter(function (x) { return x !== gg; }); if (!on) ge.gdno.push(gg); renderList(); }
+        toast('⚠ ' + errMsg(err));
+      }).gdHide(gg, gno, on);
+    return;
+  }
   if ((b = t.closest('[data-gdadd]'))) { openGdAdd(Number(b.getAttribute('data-gdadd')), b.getAttribute('data-gdn')); return; }
   if ((b = t.closest('[data-newitem]'))) { openNewItem(b.getAttribute('data-newitem')); return; }
   if ((b = t.closest('[data-pick]'))) { choose(Number(b.getAttribute('data-pick')), Number(b.getAttribute('data-q') || 0)); return; }
@@ -1792,7 +1818,7 @@ function doSave() {
       current = ''; draftOpen = false; flash = '';
       renderView();
       toast(e.type === TR_TYPE ? (e.merged ? 'Added to LR ' + e.lr : 'Saved LR ' + e.lr + ' — in transport')
-                               : 'Saved ' + (e.lname ? e.lname + ' ' : '') + '#' + e.no + ' — see 📋 Activity');
+                               : 'Saved ' + (e.lname ? e.lname : 'the list') + ' — see 📋 Activity');
     })
     .withFailureHandler(function (err) {
       saving = false; updateSave();
@@ -1894,8 +1920,8 @@ function buildPdf(r) {
     list.forEach(function (e) {
       var tr = e.type === 'In Transport';
       var left = tr ? (e.transport || '?') + '  -  LR ' + (e.lr || '?') + (e.from ? '  -  from ' + e.from : '')
-                    : (e.type === 'Stock Out' ? 'OUT' : 'IN') + ' #' + e.no + (e.lname ? '  -  ' + e.lname : '');
-      block(left, (tr ? '#' + e.no + '   ' : '') + e.by + '   ' + e.time, e.note, e.edits);
+                    : (e.type === 'Stock Out' ? 'OUT' : 'IN') + (e.lname ? '  -  ' + e.lname : '');
+      block(left, e.by + '   ' + e.time, e.note, e.edits);
       var rows = (e.lines || []).map(function (l, i) {
         var app = l.deleted ? '' : tr ? (Number(l.recd) >= Number(l.qty) ? 'TICK' : Number(l.recd) > 0 ? n0(l.recd) + ' of ' + n0(l.qty) : 'on way')
                                       : (l.checked ? 'TICK' : '');

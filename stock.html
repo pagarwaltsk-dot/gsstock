@@ -451,7 +451,7 @@ function gRender() {
   if (gview === 'add') { gRenderAdd(); return; }
   if (!$('gq')) {
     v.innerHTML = '<div class="fs"><input id="gq" type="search" placeholder="🔍 Find item in ' + esc(gd) + '" autocomplete="off" autocorrect="off" ' +
-      'autocapitalize="off" spellcheck="false"></div><div class="gbar"><button data-gv="lists">📥 From an OUT list</button>' +
+      'autocapitalize="off" spellcheck="false"></div><div class="gbar">' +
       '<button data-gv="add">＋ Add item</button></div><div class="gtools"><div class="chipsrow st" id="gfilt"></div>' +
       '<button class="gedit" id="gedit" data-gedit="1"></button></div><div id="glist"></div>';
     $('gq').value = gq;
@@ -480,7 +480,7 @@ function gRenderList() {
   });
   var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') +
     (gEdit ? ' · + / − is 1 big pack — tap ✓ Done when finished' : ' · tap ✏️ Edit stock to change') + '</div>';
-  if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Use 📥 From an OUT list or ＋ Add item.</div>';
+  if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Open a saved OUT list in the staff app and tap 📥 Add to ' + esc(gd) + ', or use ＋ Add item.</div>';
   else if (!show.length) h += '<div class="empty">No item matches</div>';
   h += show.map(function (r) {
     var n = r[0];
@@ -525,7 +525,7 @@ function gRenderHist() {
   var rows = L.rows || [];
   if (!rows.length) h += '<div class="empty">No movement yet</div>';
   h += rows.map(function (r) {
-    var word = r.kind === 'OUT list' ? 'from OUT #' + r.no : r.kind === 'count' ? 'counted' : r.kind === 'plus' ? 'added' : 'taken out';
+    var word = r.kind === 'OUT list' ? 'from ' + (r.list || 'an OUT list') : r.kind === 'count' ? 'counted' : r.kind === 'plus' ? 'added' : 'taken out';
     return '<div class="lg"><div class="d"><b>' + esc(r.date) + '</b><small>' + esc(r.time) + ' · ' + esc(r.by || '?') + '</small>' +
       '<div class="li">' + esc(word) + '</div></div><div class="m"><div class="mv ' + (r.qty < 0 ? 'out' : 'in') + '">' +
       (r.qty < 0 ? '−' : '+') + esc(packText(n, Math.abs(r.qty))) + '</div><div class="bal' + (r.bal < 0 ? ' neg' : '') + '">balance ' +
@@ -560,7 +560,7 @@ function gRenderLists() {
     var off = gLists.filter(function (l) { return l.taken || l.hidden; });
     var one = function (l) {
       var i = gLists.indexOf(l), mine = (l.lines || []).filter(function (x) { return x.mine; }).length;
-      return '<div class="gl' + (l.taken || l.hidden ? ' done' : '') + '" data-gl="' + i + '"><div class="gi"><b>#' + l.no + (l.lname ? ' · ' + esc(l.lname) : '') + '</b>' +
+      return '<div class="gl' + (l.taken || l.hidden ? ' done' : '') + '" data-gl="' + i + '"><div class="gi"><b>' + (l.lname ? esc(l.lname) : 'Stock OUT') + '</b>' +
         '<small>' + (l.taken ? '✓ added to ' + esc(gd) : (l.hidden ? 'hidden · ' : '') + mine + ' of ' + (l.lines || []).length + ' items for ' + esc(gd)) +
         ' · ' + esc(l.by || '') + ' · ' + esc(l.time || '') + '</small></div>' +
         (l.taken ? '' : '<button class="gh" data-ghide="' + i + '">' + (l.hidden ? 'Show' : 'Hide') + '</button>') + '</div>';
@@ -576,13 +576,13 @@ function gRenderLists() {
 function gOpenTake(i) {
   var l = gLists[i];
   if (!l) return;
-  if (l.taken) { toast('OUT #' + l.no + ' is already in ' + gd); return; }
+  if (l.taken) { toast((l.lname || 'This list') + ' is already in ' + gd); return; }
   gTake = { no: l.no, lname: l.lname, lines: (l.lines || []).map(function (x) { return { row: x.row, item: x.item, qty: x.qty, unit: x.unit, on: !!x.mine, mine: !!x.mine }; }) };
   gview = 'take'; gRender();
 }
 function gRenderTake() {
   var T = gTake, n = T.lines.filter(function (x) { return x.on; }).length;
-  var h = '<div class="lhead"><button class="back" data-gv="lists">‹ OUT lists</button><h3>OUT #' + T.no + (T.lname ? ' · ' + esc(T.lname) : '') + '</h3>' +
+  var h = '<div class="lhead"><button class="back" data-gv="lists">‹ OUT lists</button><h3>' + (T.lname ? esc(T.lname) : 'Stock OUT') + '</h3>' +
     '<div class="sub2">Tick what went to ' + esc(gd) + ' and check the quantities.</div>';
   h += T.lines.map(function (x, i) {
     return '<div class="gt"><input type="checkbox" data-gtc="' + i + '"' + (x.on ? ' checked' : '') + '>' +
@@ -609,7 +609,7 @@ function gHideList(i) {
   var hide = !l.hidden;
   l.hidden = hide; gRenderLists();
   rpc('gd_hide_list', { p_token: TOKEN, p_godown: gd, p_no: l.no, p_hide: hide }).then(function () {
-    toast((hide ? 'OUT #' + l.no + ' hidden' : 'OUT #' + l.no + ' shown again'), hide ? function () { gHideList(i); } : null);
+    toast((hide ? (l.lname || 'List') + ' hidden' : (l.lname || 'List') + ' shown again'), hide ? function () { gHideList(i); } : null);
   }, function (e) { l.hidden = !hide; gRenderLists(); toast('⚠ ' + errMsg(e)); });
 }
 
