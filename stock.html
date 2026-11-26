@@ -109,6 +109,13 @@
   .gt .nm small{display:block;font-size:11px;color:var(--muted)}
   .gt input[type=number]{width:70px;font-size:15px;padding:6px;border:1px solid #c9cfcb;border-radius:8px;text-align:center}
   .gt .u{font-size:12px;color:var(--muted);min-width:42px}
+  .gtools{display:flex;gap:6px;align-items:center;margin:0 0 8px}
+  .gtools .chipsrow{flex:1;padding:0}
+  .gedit{flex-shrink:0;border:1px solid #c9cfcb;background:#fff;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--hdr)}
+  .gedit.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .gl{display:flex;align-items:center;gap:8px}
+  .gl .gi{flex:1;min-width:0}
+  .gl .gh{flex-shrink:0;border:1px solid #d5d9dc;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;color:#555}
   .gbig{width:100%;margin-top:10px;border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:15px;padding:12px}
   .gbig.grey{background:#eee;color:#555}
   .gset{display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
@@ -419,6 +426,7 @@ function openItem(n) { item = n; ledger = null; renderLedger(); $('view').parent
 function back() { item = ''; ledger = null; $('view').innerHTML = ''; render(); busy = false; refresh(true); }
 
 /* ---------- other godowns (R(G)…) — Staff sheet "Other godowns = Yes" only ---------- */
+var gEdit = false, gFilt = store('stockGdFilt') || 'all', gShowHidden = false;
 var godowns = [], gd = store('stockGd') || '', gview = 'list', gRows = null, gItem = '', gLedger = null, gq = '', gLists = null, gTake = null;
 function paintModes() {
   var m = $('modes');
@@ -429,7 +437,7 @@ function paintModes() {
   if (m.innerHTML !== h) m.innerHTML = h;
 }
 function setGodown(g) {
-  gd = g; store('stockGd', g); gview = 'list'; gRows = null; gItem = ''; gLedger = null;
+  gd = g; store('stockGd', g); gview = 'list'; gEdit = false; gRows = null; gItem = ''; gLedger = null;
   item = ''; ledger = null;
   $('view').innerHTML = ''; paintModes(); render(); busy = false; refresh(true);
 }
@@ -444,7 +452,8 @@ function gRender() {
   if (!$('gq')) {
     v.innerHTML = '<div class="fs"><input id="gq" type="search" placeholder="🔍 Find item in ' + esc(gd) + '" autocomplete="off" autocorrect="off" ' +
       'autocapitalize="off" spellcheck="false"></div><div class="gbar"><button data-gv="lists">📥 From an OUT list</button>' +
-      '<button data-gv="add">＋ Add item</button></div><div id="glist"></div>';
+      '<button data-gv="add">＋ Add item</button></div><div class="gtools"><div class="chipsrow st" id="gfilt"></div>' +
+      '<button class="gedit" id="gedit" data-gedit="1"></button></div><div id="glist"></div>';
     $('gq').value = gq;
     $('gq').oninput = function () { gq = this.value; gRenderList(); };
   }
@@ -455,12 +464,22 @@ function gRenderList() {
   if (!box) return;
   if (!gRows) { box.innerHTML = '<div class="empty">Loading ' + esc(gd) + '…</div>'; return; }
   var toks = norm(gq) ? norm(gq).split(' ') : [];
+  var fb = $('gfilt');
+  if (fb) fb.innerHTML = [['all', 'All'], ['in', 'In stock'], ['zero', 'Zero']].map(function (x) {
+    return '<button data-gf="' + x[0] + '"' + (x[0] === gFilt ? ' class="on"' : '') + '>' + x[1] + '</button>';
+  }).join('');
+  var eb = $('gedit');
+  if (eb) { eb.className = 'gedit' + (gEdit ? ' on' : ''); eb.textContent = gEdit ? '✓ Done' : '✏️ Edit stock'; }
   var show = gRows.filter(function (r) {
+    var z = Math.round(r[1] * 1000) / 1000;
+    if (gFilt === 'in' && !(z > 0)) return false;
+    if (gFilt === 'zero' && z !== 0) return false;
     if (!toks.length) return true;
     var p = pack[r[0]] || [], tx = norm(r[0] + ' ' + (p[4] || ''));
     return toks.every(function (k) { return tx.indexOf(k) >= 0; });
   });
-  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' · + / − is 1 big pack</div>';
+  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') +
+    (gEdit ? ' · + / − is 1 big pack — tap ✓ Done when finished' : ' · tap ✏️ Edit stock to change') + '</div>';
   if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Use 📥 From an OUT list or ＋ Add item.</div>';
   else if (!show.length) h += '<div class="empty">No item matches</div>';
   h += show.map(function (r) {
@@ -468,8 +487,8 @@ function gRenderList() {
     return '<div class="gr"><div class="nm" data-gh="' + esc(n) + '">' + esc(n) + '<small>' + esc(gPackName(n)) +
       (gPack(n) > 1 ? ' of ' + fmt(gPack(n)) + ' ' + esc(baseText(n)) : '') + '</small></div>' +
       '<div class="q' + (r[1] < 0 ? ' neg' : '') + '">' + esc(packText(n, r[1])) + '</div>' +
-      '<button class="pm" data-gm="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
-      '<button class="pm" data-gm="1" data-gi="' + esc(n) + '" aria-label="One more">+</button></div>';
+      (gEdit ? '<button class="pm" data-gm="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
+               '<button class="pm" data-gm="1" data-gi="' + esc(n) + '" aria-label="One more">+</button>' : '') + '</div>';
   }).join('');
   box.innerHTML = h;
 }
@@ -524,7 +543,7 @@ function gSetCount() {
     toast(gItem + ' set to ' + packText(gItem, total)); gLedger = null; gRenderHist(); busy = false; refresh(true);
   }, function (e) { toast('⚠ ' + errMsg(e)); });
 }
-function gBack() { gview = 'list'; gItem = ''; gLedger = null; gTake = null; $('view').innerHTML = ''; gRender(); busy = false; refresh(true); }
+function gBack() { gEdit = false; gview = 'list'; gItem = ''; gLedger = null; gTake = null; $('view').innerHTML = ''; gRender(); busy = false; refresh(true); }
 
 /* 📥 From an OUT list: its items of this godown's categories come ticked; others can be ticked by hand */
 function gOpenLists() {
@@ -536,13 +555,22 @@ function gRenderLists() {
   var h = '<div class="lhead"><button class="back" data-gback="1">‹ ' + esc(gd) + '</button><h3>📥 From an OUT list</h3>' +
     '<div class="sub2">Stock OUT lists of the last 10 days. Items of this godown\'s categories come ticked.</div></div>';
   if (!gLists) h += '<div class="empty">Loading…</div>';
-  else if (!gLists.length) h += '<div class="empty">No Stock OUT lists in the last 10 days</div>';
-  else h += gLists.map(function (l, i) {
-    var mine = (l.lines || []).filter(function (x) { return x.mine; }).length;
-    return '<div class="gl' + (l.taken ? ' done' : '') + '" data-gl="' + i + '"><b>#' + l.no + (l.lname ? ' · ' + esc(l.lname) : '') + '</b>' +
-      '<small>' + (l.taken ? '✓ already in ' + esc(gd) : mine + ' of ' + (l.lines || []).length + ' items for ' + esc(gd)) +
-      ' · ' + esc(l.by || '') + ' · ' + esc(l.time || '') + '</small></div>';
-  }).join('');
+  else {
+    var open = gLists.filter(function (l) { return !l.taken && !l.hidden; });
+    var off = gLists.filter(function (l) { return l.taken || l.hidden; });
+    var one = function (l) {
+      var i = gLists.indexOf(l), mine = (l.lines || []).filter(function (x) { return x.mine; }).length;
+      return '<div class="gl' + (l.taken || l.hidden ? ' done' : '') + '" data-gl="' + i + '"><div class="gi"><b>#' + l.no + (l.lname ? ' · ' + esc(l.lname) : '') + '</b>' +
+        '<small>' + (l.taken ? '✓ added to ' + esc(gd) : (l.hidden ? 'hidden · ' : '') + mine + ' of ' + (l.lines || []).length + ' items for ' + esc(gd)) +
+        ' · ' + esc(l.by || '') + ' · ' + esc(l.time || '') + '</small></div>' +
+        (l.taken ? '' : '<button class="gh" data-ghide="' + i + '">' + (l.hidden ? 'Show' : 'Hide') + '</button>') + '</div>';
+    };
+    h += open.length ? open.map(one).join('') : '<div class="empty">No OUT lists waiting</div>';
+    if (off.length) {
+      h += '<button class="showh" data-gshowh="1">' + (gShowHidden ? 'Don\'t show added / hidden lists' : 'Show ' + off.length + ' added / hidden list' + (off.length > 1 ? 's' : '')) + '</button>';
+      if (gShowHidden) h += off.map(one).join('');
+    }
+  }
   $('view').innerHTML = h;
 }
 function gOpenTake(i) {
@@ -573,6 +601,16 @@ function gDoTake(btn) {
     toast('📥 ' + r.added + ' item' + (r.added === 1 ? '' : 's') + ' added to ' + gd);
     gBack();
   }, function (e) { btn.disabled = false; btn.textContent = 'Try again'; toast('⚠ ' + errMsg(e)); });
+}
+
+function gHideList(i) {
+  var l = gLists[i];
+  if (!l) return;
+  var hide = !l.hidden;
+  l.hidden = hide; gRenderLists();
+  rpc('gd_hide_list', { p_token: TOKEN, p_godown: gd, p_no: l.no, p_hide: hide }).then(function () {
+    toast((hide ? 'OUT #' + l.no + ' hidden' : 'OUT #' + l.no + ' shown again'), hide ? function () { gHideList(i); } : null);
+  }, function (e) { l.hidden = !hide; gRenderLists(); toast('⚠ ' + errMsg(e)); });
 }
 
 /* ＋ Add item: any item can be put on the godown's list */
@@ -624,6 +662,10 @@ window.onload = function () {
   });
   $('view').addEventListener('click', function (ev) {
     var g;
+    if ((g = ev.target.closest('[data-ghide]'))) { gHideList(Number(g.getAttribute('data-ghide'))); return; }
+    if (ev.target.closest('[data-gshowh]')) { gShowHidden = !gShowHidden; gRenderLists(); return; }
+    if (ev.target.closest('[data-gedit]')) { gEdit = !gEdit; gRenderList(); return; }
+    if ((g = ev.target.closest('[data-gf]'))) { gFilt = g.getAttribute('data-gf'); store('stockGdFilt', gFilt); gRenderList(); return; }
     if ((g = ev.target.closest('[data-gm]'))) { gMove(g.getAttribute('data-gi'), Number(g.getAttribute('data-gm'))); return; }
     if ((g = ev.target.closest('[data-gh]'))) { gOpenHist(g.getAttribute('data-gh')); return; }
     if ((g = ev.target.closest('[data-gback]'))) { gBack(); return; }
