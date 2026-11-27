@@ -113,6 +113,18 @@
   .gtools .chipsrow{flex:1;padding:0}
   .gedit{flex-shrink:0;border:1px solid #c9cfcb;background:#fff;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--hdr)}
   .gedit.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .gbar button.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .gr .oq{min-width:50px;text-align:center;font-weight:700;font-size:15px;line-height:1.1}
+  .gr .oq small{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+  .gr .oq.z{color:#b7bcc0}
+  .gr .ms{display:block;font-size:12px;color:var(--muted)}
+  .gr .ms .lo{color:#b45309}.gr .ms .no{color:#c0392b}
+  .obar{position:sticky;bottom:0;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e5e8;border-radius:12px;padding:8px 8px 8px 12px;margin-top:8px;font-size:14px}
+  .obar span{flex:1}
+  .obar button{border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:14px;padding:10px 14px}
+  .owa{white-space:pre-wrap;background:#e7f6ee;border:1px solid #cfe9db;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.55;margin:10px 0;color:#1d3b2c}
+  .orow{display:flex;gap:8px}.orow .gbig{flex:1}
+  .gnote{width:100%;font-size:16px;padding:9px;border:1px solid #c9cfcb;border-radius:8px;box-sizing:border-box}
   .gl{display:flex;align-items:center;gap:8px}
   .gl .gi{flex:1;min-width:0}
   .gl .gh{flex-shrink:0;border:1px solid #d5d9dc;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;color:#555}
@@ -311,6 +323,9 @@ function refresh(force) {
     paintModes();
     if (gd) {
       var gj = gview === 'hist' ? rpc('gd_ledger', { p_token: TOKEN, p_godown: gd, p_item: gItem }) : rpc('gd_list', { p_token: TOKEN, p_godown: gd });
+      if (gOrd && gview !== 'hist') gj = Promise.all([gj, rpc('stock_list', { p_token: TOKEN })]).then(function (a) {
+        mainQ = {}; (a[1] || []).forEach(function (x) { mainQ[x[0]] = x[1]; }); return a[0];
+      });
       return gj.then(function (r) {
         if (gview === 'hist') gLedger = r; else gRows = (r && r.rows) || [];
         busy = false;
@@ -427,6 +442,7 @@ function openItem(n) { item = n; ledger = null; renderLedger(); $('view').parent
 function back() { item = ''; ledger = null; $('view').innerHTML = ''; render(); busy = false; refresh(true); }
 
 /* ---------- other godowns (R(G)…) — Staff sheet "Other godowns = Yes" only ---------- */
+var gOrd = false, mainQ = null, ordNote = '';
 var gEdit = false, gFilt = store('stockGdFilt') || 'all', gShowHidden = false;
 var iver = '';
 var godowns = [], gd = store('stockGd') || '', gview = 'list', gRows = null, gItem = '', gLedger = null, gq = '', gLists = null, gTake = null;
@@ -439,7 +455,7 @@ function paintModes() {
   if (m.innerHTML !== h) m.innerHTML = h;
 }
 function setGodown(g) {
-  gd = g; store('stockGd', g); gview = 'list'; gEdit = false; gRows = null; gItem = ''; gLedger = null;
+  gd = g; store('stockGd', g); gview = 'list'; gEdit = false; gOrd = false; gRows = null; gItem = ''; gLedger = null;
   item = ''; ledger = null;
   $('view').innerHTML = ''; paintModes(); render(); busy = false; refresh(true);
 }
@@ -451,10 +467,11 @@ function gRender() {
   if (gview === 'lists') { gRenderLists(); return; }
   if (gview === 'take') { gRenderTake(); return; }
   if (gview === 'add') { gRenderAdd(); return; }
+  if (gview === 'ord') { gRenderOrd(); return; }
   if (!$('gq')) {
     v.innerHTML = '<div class="fs"><input id="gq" type="search" placeholder="🔍 Find item in ' + esc(gd) + '" autocomplete="off" autocorrect="off" ' +
       'autocapitalize="off" spellcheck="false"></div><div class="gbar">' +
-      '<button data-gv="add">＋ Add item</button></div><div class="gtools"><div class="chipsrow st" id="gfilt"></div>' +
+      '<button data-gv="add">＋ Add item</button><button id="gordb" data-gord="1">🧾 Order</button></div><div class="gtools"><div class="chipsrow st" id="gfilt"></div>' +
       '<button class="gedit" id="gedit" data-gedit="1"></button></div><div id="glist"></div>';
     $('gq').value = gq;
     $('gq').oninput = function () { gq = this.value; gRenderList(); };
@@ -471,7 +488,11 @@ function gRenderList() {
     return '<button data-gf="' + x[0] + '"' + (x[0] === gFilt ? ' class="on"' : '') + '>' + x[1] + '</button>';
   }).join('');
   var eb = $('gedit');
-  if (eb) { eb.className = 'gedit' + (gEdit ? ' on' : ''); eb.textContent = gEdit ? '✓ Done' : '✏️ Edit stock'; }
+  if (eb) { eb.className = 'gedit' + (gEdit ? ' on' : ''); eb.textContent = gEdit ? '✓ Done' : '✏️ Edit stock'; eb.style.display = gOrd ? 'none' : ''; }
+  var ob = $('gordb');
+  if (ob) { ob.className = gOrd ? 'on' : ''; ob.textContent = gOrd ? '✓ Order mode on' : '🧾 Order'; }
+  if (fb) fb.style.visibility = gOrd ? 'hidden' : '';
+  if (gOrd) { gRenderOrdList(box, toks); return; }
   var show = gRows.filter(function (r) {
     var z = Math.round(r[1] * 1000) / 1000;
     if (gFilt === 'in' && !(z > 0)) return false;
@@ -493,6 +514,91 @@ function gRenderList() {
                '<button class="pm" data-gm="1" data-gi="' + esc(n) + '" aria-label="One more">+</button>' : '') + '</div>';
   }).join('');
   box.innerHTML = h;
+}
+/* ---------- order for the shop: pick what to bring, then copy to WhatsApp (nothing is saved to the database) ---------- */
+function ordGet() { try { return JSON.parse(store('stockOrd_' + gd) || '{}') || {}; } catch (e) { return {}; } }
+function ordPut(o) { store('stockOrd_' + gd, JSON.stringify(o)); }
+function ordLines() {
+  var o = ordGet();
+  return (gRows || []).map(function (r) { return r[0]; }).concat(Object.keys(o).filter(function (n) {
+    return !(gRows || []).some(function (r) { return r[0] === n; });
+  })).filter(function (n) { return o[n] > 0; }).map(function (n) { return [n, o[n]]; });
+}
+function packsText(n, k) {
+  var f = factor(n, UNITS[0]);
+  return fmt(k) + ' ' + (f > 0 ? unitText(n, UNITS[0]) : baseText(n));
+}
+function gToggleOrd() {
+  gOrd = !gOrd; gEdit = false;
+  if (gOrd) { gFilt = 'all'; }
+  gRenderList(); if (gOrd && !mainQ) { busy = false; refresh(true); }
+}
+function gRenderOrdList(box, toks) {
+  var o = ordGet();
+  var show = gRows.filter(function (r) {
+    if (!toks.length) return true;
+    var p = pack[r[0]] || [], tx = norm(r[0] + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return tx.indexOf(k) >= 0; });
+  }).slice().sort(function (a, b) { return a[1] / gPack(a[0]) - b[1] / gPack(b[0]); });   // emptiest first
+  var lines = ordLines();
+  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' · emptiest first · + / − is 1 big pack</div>';
+  if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Use ＋ Add item first.</div>';
+  else if (!show.length) h += '<div class="empty">No item matches</div>';
+  h += show.map(function (r) {
+    var n = r[0], k = o[n] || 0, m = mainQ ? mainQ[n] : null;
+    var z = Math.round(r[1] * 1000) / 1000;
+    return '<div class="gr"><div class="nm">' + esc(n) +
+      '<span class="ms"><span class="' + (z <= 0 ? 'no' : z < gPack(n) ? 'lo' : '') + '">' + esc(gd) + ': ' + esc(packText(n, r[1])) + '</span>' +
+      ' · Main: ' + (m == null ? '…' : esc(packText(n, m))) + '</span></div>' +
+      '<button class="pm" data-go="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
+      '<div class="oq' + (k ? '' : ' z') + '">' + fmt(k) + '<small>' + esc(gPackName(n)) + '</small></div>' +
+      '<button class="pm" data-go="1" data-gi="' + esc(n) + '" aria-label="One more">+</button></div>';
+  }).join('');
+  h += '<div class="obar"><span>' + (lines.length ? lines.length + ' item' + (lines.length === 1 ? '' : 's') + ' in order' : 'Tap + on what to bring') + '</span>' +
+    (lines.length ? '<button data-gv="ord">Next →</button>' : '') + '</div>';
+  box.innerHTML = h;
+}
+function gOrdStep(n, d) {
+  var o = ordGet(); var k = Math.max(0, Math.round(((o[n] || 0) + d) * 1000) / 1000);
+  if (k) o[n] = k; else delete o[n];
+  ordPut(o); gRenderList();
+}
+function ordText() {
+  var d = new Date(), mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  var t = '*Order for ' + gd + ' – ' + d.getDate() + ' ' + mon + '*\n';
+  if (ordNote.trim()) t += ordNote.trim() + '\n';
+  t += '\n' + ordLines().map(function (x, i) { return (i + 1) + '. ' + x[0] + ' – ' + packsText(x[0], x[1]); }).join('\n');
+  return t + '\n\n– ' + myName;
+}
+function gRenderOrd() {
+  var v = $('view'), lines = ordLines();
+  if (!lines.length) { gview = 'list'; v.innerHTML = ''; gRender(); return; }
+  if (!$('onote')) {
+    v.innerHTML = '<div class="gbar"><button data-gback="1">← Back to items</button></div>' +
+      '<input id="onote" class="gnote" placeholder="Note (optional) — e.g. send by 11 AM" autocomplete="off">' +
+      '<div class="owa" id="owa"></div>' +
+      '<div class="orow"><button class="gbig grey" data-ocopy="1">📋 Copy</button><button class="gbig" data-owa="1">💬 Open WhatsApp</button></div>' +
+      '<button class="gbig grey" data-oclear="1" style="margin-top:14px">🗑 Clear order</button>';
+    $('onote').value = ordNote;
+    $('onote').oninput = function () { ordNote = this.value; $('owa').textContent = ordText(); };
+  }
+  $('owa').textContent = ordText();
+}
+function ordCopy() {
+  var t = ordText();
+  var done = function () { toast('Copied — paste it in WhatsApp'); };
+  var old = function () {
+    var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Could not copy — press and hold the text to copy it'); }
+    document.body.removeChild(a);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, old); else old();
+}
+function ordWhatsApp() { location.href = 'https://wa.me/?text=' + encodeURIComponent(ordText()); }
+var clearArm = 0;
+function ordClear(btn) {
+  if (Date.now() - clearArm > 3000) { clearArm = Date.now(); btn.textContent = 'Tap again to clear'; return; }
+  clearArm = 0; ordPut({}); ordNote = ''; gview = 'list'; $('view').innerHTML = ''; gRender(); toast('Order cleared');
 }
 var gUndo = null, toastT = null;
 function toast(msg, undo) {
@@ -545,7 +651,7 @@ function gSetCount() {
     toast(gItem + ' set to ' + packText(gItem, total)); gLedger = null; gRenderHist(); busy = false; refresh(true);
   }, function (e) { toast('⚠ ' + errMsg(e)); });
 }
-function gBack() { gEdit = false; gview = 'list'; gItem = ''; gLedger = null; gTake = null; $('view').innerHTML = ''; gRender(); busy = false; refresh(true); }
+function gBack() { if (gview !== 'ord') gOrd = false; gEdit = false; gview = 'list'; gItem = ''; gLedger = null; gTake = null; $('view').innerHTML = ''; gRender(); busy = false; refresh(true); }
 
 /* 📥 From an OUT list: its items of this godown's categories come ticked; others can be ticked by hand */
 function gOpenLists() {
@@ -667,6 +773,11 @@ window.onload = function () {
     if ((g = ev.target.closest('[data-ghide]'))) { gHideList(Number(g.getAttribute('data-ghide'))); return; }
     if (ev.target.closest('[data-gshowh]')) { gShowHidden = !gShowHidden; gRenderLists(); return; }
     if (ev.target.closest('[data-gedit]')) { gEdit = !gEdit; gRenderList(); return; }
+    if (ev.target.closest('[data-gord]')) { gToggleOrd(); return; }
+    if ((g = ev.target.closest('[data-go]'))) { gOrdStep(g.getAttribute('data-gi'), Number(g.getAttribute('data-go'))); return; }
+    if (ev.target.closest('[data-ocopy]')) { ordCopy(); return; }
+    if (ev.target.closest('[data-owa]')) { ordWhatsApp(); return; }
+    if ((g = ev.target.closest('[data-oclear]'))) { ordClear(g); return; }
     if ((g = ev.target.closest('[data-gf]'))) { gFilt = g.getAttribute('data-gf'); store('stockGdFilt', gFilt); gRenderList(); return; }
     if ((g = ev.target.closest('[data-gm]'))) { gMove(g.getAttribute('data-gi'), Number(g.getAttribute('data-gm'))); return; }
     if ((g = ev.target.closest('[data-gh]'))) { gOpenHist(g.getAttribute('data-gh')); return; }
