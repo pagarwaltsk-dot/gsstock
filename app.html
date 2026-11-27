@@ -336,7 +336,7 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v20</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v21</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -485,7 +485,7 @@ var RPC = {
   gdHide:      function (g, no, on) { return ['gd_hide_list', { p_token: tk(), p_godown: g, p_no: no, p_hide: !!on }]; },
   gdTake:      function (g, no, lines) { return ['gd_take', { p_token: tk(), p_godown: g, p_no: no, p_lines: lines }]; },
   addItem:     function (p) { return ['add_item', { p_token: tk(), p: p }]; },
-  getState:    function (v) { return ['get_state', { p_token: tk(), p_ver: v || '' }]; },
+  getState:    function (v, since) { return ['get_state', { p_token: tk(), p_ver: v || '', p_since: since || null }]; },
   saveEntry:   function (p) { return ['save_entry', { p_token: tk(), p: p }]; },
   setChecked:  function (row, no, c) { return ['set_checked', { p_token: tk(), p_line: row, p_no: no, p_checked: !!c }]; },
   receiveLine: function (row, no, q) { return ['receive_line', { p_token: tk(), p_line: row, p_no: no, p_qty: Number(q) || 0 }]; },
@@ -512,7 +512,7 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '20';
+var APP_VER = '21';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
@@ -709,7 +709,7 @@ function doLogin() {
   $('lGo').disabled = true; $('lGo').textContent = 'Checking…';
   rpcCall('login', { p_name: loginName, p_pin: pin }).then(function (r) {
     $('lGo').disabled = false; $('lGo').textContent = 'Log in';
-    TOKEN = r.token; store('token', TOKEN);
+    TOKEN = r.token; store('token', TOKEN); SINCE = null;
     setName(r.name); setSeeStock(r.seeStock);
     $('login').hidden = true;
     ver = ''; poll(true);
@@ -726,7 +726,7 @@ function authLost() {
 }
 function logOut() {
   var t = TOKEN;
-  TOKEN = ''; store('token', ''); store('lastState', ''); setName('');
+  TOKEN = ''; store('token', ''); store('lastState', ''); setName(''); SINCE = null;
   $('me').hidden = true;
   if (t) rpcCall('logout', { p_token: t }).then(function () {}, function () {});
   showLogin('');
@@ -1388,25 +1388,35 @@ function checkVersion(server) {
   lab.title = 'App v' + APP_VER + ', Supabase v' + (sv || '?');
   lab.style.opacity = '1';
 }
+/* After the first full load the phone asks only for what changed (SINCE), and merges it in. */
+var SINCE = null;
 function applyState(d, fromCache) {
-  if (!fromCache) store('lastState', JSON.stringify(d));
+  var delta = !fromCache && d.delta;
+  if (!fromCache && !delta) { try { store('lastState', JSON.stringify(d)); } catch (e) {} }
+  if (!fromCache) SINCE = { epoch: d.epoch, chg: d.chg, act: d.act, iver: d.iver, maxno: d.maxno };
   ver = fromCache ? '' : d.ver;
   if (!fromCache) checkVersion(d.appVer);   // data saved on the phone may be from before an update — only check fresh data
   if (d.me && !fromCache) setName(d.me);
   if (d.seeStock !== undefined) setSeeStock(d.seeStock);
   if (d.pack) pack = d.pack;
   if (d.items) { items = d.items; buildIndex(); }
-  transports = d.transports || [];
-  names = d.names || [];
-  lnames = d.lnames || [];
-  activity = d.activity || [];
+  if (d.transports) transports = d.transports;
+  if (d.names) names = d.names;
+  if (d.lnames) lnames = d.lnames;
+  if (delta) {                     // new activity rows go on top; keep the newest 100
+    var seenA = {};
+    activity = (d.activity || []).concat(activity).filter(function (x) { if (seenA[x.id]) return false; seenA[x.id] = 1; return true; })
+      .sort(function (x, y) { return y.id - x.id; }).slice(0, 100);
+  } else activity = d.activity || [];
   $('itList').innerHTML = items.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   $('lnList').innerHTML = lnames.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
   if (d.units && d.units.length) UNITS = d.units;
   godowns = d.godowns || []; gdcats = d.gdcats || {};
 
   var next = {}, fresh = [];
+  if (delta) for (var k0 in entries) next[k0] = entries[k0];      // keep what the phone has; changed lists replace their old copy
   (d.entries || []).forEach(function (e) {
+    if (delta && older[e.no]) older[e.no] = e;
     next[e.no] = e;
     if (seenNos && !seenNos[e.no] && !(myName && e.by.toLowerCase() === myName.toLowerCase())) fresh.push(e);
   });
@@ -1442,7 +1452,7 @@ function poll(force) {
       polling = false;
       if (!loaded) { var b = $('entry'); if (b) b.innerHTML = '<div class="card">Could not load — ' + esc(errMsg(err)) + '</div>'; }
     })
-    .getState(force ? '' : ver);
+    .getState(force ? '' : ver, SINCE);
 }
 
 /* ---------- 📥 add an OUT list's items to another godown (R(G)…) — Staff "Other godowns = Yes" only ---------- */
@@ -1527,7 +1537,7 @@ function saveNewItem() {
         if (d) applyState(d);
         var i = items.indexOf(nm);
         if (i >= 0) choose(i, 0);
-      }).withFailureHandler(function () {}).getState('');
+      }).withFailureHandler(function () {}).getState('', SINCE);
     })
     .withFailureHandler(function (e) {
       $('niOk').disabled = false; $('niOk').textContent = 'Add item';

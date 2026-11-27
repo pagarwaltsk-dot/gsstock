@@ -301,9 +301,10 @@ function refresh(force) {
   if (!TOKEN || busy || (!force && document.hidden)) return;
   busy = true;
   // get_state tells us packing + whether anything changed (null = nothing new)
-  rpc('get_state', { p_token: TOKEN, p_ver: force ? '' : ver }).then(function (d) {
+  // "lite": who you are + godowns, and the item list only when it changed (keeps downloads small)
+  rpc('get_state', { p_token: TOKEN, p_ver: force ? '' : ver, p_since: { lite: true, iver: iver } }).then(function (d) {
     if (!d) { busy = false; return; }
-    ver = d.ver; pack = d.pack || pack; if (d.units) UNITS = d.units;
+    ver = d.ver; if (d.pack) { pack = d.pack; iver = d.iver || ''; } if (d.units) UNITS = d.units;
     if (d.seeStock === false) { busy = false; logOut(); $('lErr').textContent = 'Your stock access was turned off.'; return; }
     godowns = d.godowns || [];
     if (gd && godowns.indexOf(gd) < 0) { gd = ''; store('stockGd', ''); }
@@ -427,6 +428,7 @@ function back() { item = ''; ledger = null; $('view').innerHTML = ''; render(); 
 
 /* ---------- other godowns (R(G)…) — Staff sheet "Other godowns = Yes" only ---------- */
 var gEdit = false, gFilt = store('stockGdFilt') || 'all', gShowHidden = false;
+var iver = '';
 var godowns = [], gd = store('stockGd') || '', gview = 'list', gRows = null, gItem = '', gLedger = null, gq = '', gLists = null, gTake = null;
 function paintModes() {
   var m = $('modes');
