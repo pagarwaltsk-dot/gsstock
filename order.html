@@ -137,8 +137,7 @@ function renderList() {
     var t = norm(x[0] + ' ' + x[2]);
     return toks.every(function (k) { return t.indexOf(k) >= 0; });
   });
-  // picked items first, so they are easy to check
-  show.sort(function (a, b) { return (ord[b[0]] > 0) - (ord[a[0]] > 0); });
+  // the list never reorders while tapping (picked rows just turn green) — so a second tap can't land on another item
   var n = lines().length;
   var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' in the main godown · + / − is 1 ' + 'pack</div>';
   if (!items.length) h += '<div class="empty">No items in stock right now.</div>';

@@ -588,6 +588,7 @@ function gRenderOrdList(box, toks) {
       return toks.every(function (k) { return tx.indexOf(k) >= 0; });
     }).sort().slice(0, 15).forEach(function (n) { oth.push(n); });
   }
+  oth.sort();                       // fixed order: tapping + never moves a row
   h += '<div class="osec">Other items<small>' + (toks.length ? 'Not kept in ' + esc(gd) + ' — tap + to add to the order'
     : 'Not kept in ' + esc(gd) + '. Search above to add one to the order.') + '</small></div>';
   h += oth.map(function (n) {
