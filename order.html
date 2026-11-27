@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B4F47">
+<meta name="robots" content="noindex">
+<title>gsstock — Order</title>
+<script src="config.js"></script>
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root{--hdr:#0B4F47;--teal:#128C7E;--bg:#E7EAE6;--text:#111;--muted:#667781}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{font-family:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);
+       height:100vh;height:100dvh;display:flex;flex-direction:column}
+  button,input{font-family:inherit}
+  header{background:var(--hdr);color:#fff;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  header .t{flex:1;font-size:22px;font-family:"Big Shoulders Stencil Display",Impact,sans-serif;font-weight:800;letter-spacing:.05em}
+  header .t small{font-family:system-ui,sans-serif;font-weight:600;font-size:13px;letter-spacing:0;opacity:.8;margin-left:6px}
+  header .till{font-size:12px;background:rgba(255,255,255,.15);border-radius:14px;padding:5px 10px;white-space:nowrap}
+  main{flex:1;min-height:0;overflow-y:auto;padding:10px 10px 24px;overscroll-behavior:contain}
+  .wrap{max-width:720px;margin:0 auto}
+  .fs{position:sticky;top:-10px;padding:10px 0 8px;margin-top:-10px;background:var(--bg);z-index:2}
+  .fs input{width:100%;font-size:16px;padding:11px 14px;border:1px solid #c9cfcb;border-radius:22px;outline:none;background:#fff}
+  .fs input:focus{border-color:var(--teal)}
+  .empty{text-align:center;color:var(--muted);font-size:14px;margin:24px 0}
+  .cnt{font-size:12px;color:var(--muted);margin:0 2px 6px}
+  .gr{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e5e8;border-radius:10px;padding:8px 8px 8px 12px;margin-bottom:6px}
+  .gr.on{border-color:#8cc9b7;background:#f3fbf8}
+  .gr .nm{flex:1;min-width:0;font-size:15px}
+  .gr .nm small{display:block;font-size:12px;color:var(--muted)}
+  .pm{width:40px;height:40px;border:1px solid #c9cfcb;background:#fff;border-radius:10px;font-size:22px;line-height:1;color:var(--hdr);flex-shrink:0}
+  .pm:active{background:#eef4f2}
+  .oq{min-width:50px;text-align:center;font-weight:700;font-size:15px;line-height:1.1}
+  .oq small{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+  .oq.z{color:#b7bcc0}
+  .obar{position:sticky;bottom:-24px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e5e8;border-radius:12px;padding:8px 8px 8px 12px;margin-top:8px;font-size:14px}
+  .obar span{flex:1}
+  .obar button,.big{border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:15px;padding:11px 14px}
+  .big{width:100%;margin-top:10px}
+  .big.grey{background:#e9ecea;color:#444}
+  .row2{display:flex;gap:8px}.row2 .big{flex:1}
+  .in{width:100%;font-size:16px;padding:10px;border:1px solid #c9cfcb;border-radius:10px;margin-top:4px;background:#fff}
+  label{display:block;font-size:13px;color:var(--muted);margin-top:10px}
+  .owa{white-space:pre-wrap;background:#e7f6ee;border:1px solid #cfe9db;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.55;margin:12px 0 4px;color:#1d3b2c}
+  .dead{background:#fff;border-radius:14px;padding:26px 18px;text-align:center;margin-top:30px;font-size:15px;line-height:1.5}
+  .dead b{display:block;font-size:19px;margin-bottom:6px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 14px;border-radius:9px;
+         font-size:14px;z-index:50;display:none;max-width:92vw}
+</style>
+</head>
+<body>
+<header>
+  <div class="t">GSSTOCK<small>Order</small></div>
+  <span class="till" id="till" hidden></span>
+</header>
+<main><div class="wrap" id="view"><div class="empty">Opening…</div></div></main>
+<div id="toast"></div>
+
+<script>
+/* A page for staff without the app: pick what to bring from the main godown, then send it on WhatsApp.
+   It works only while the link is valid (the owner makes it on the stock link). Nothing is saved. */
+var CFG = window.STOCK_CONFIG || {};
+function cleanUrl(u) {
+  u = String(u || '').trim();
+  var dash = u.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  if (dash) return 'https://' + dash[1].toLowerCase() + '.supabase.co';
+  if (/^[a-z0-9]{15,30}$/i.test(u)) return 'https://' + u.toLowerCase() + '.supabase.co';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  var m = u.match(/^(https?:\/\/[^\/?#\s]+)/i);
+  return m ? m[1] : '';
+}
+function rpc(fn, body) {
+  var key = String(CFG.key || '').trim(), url = cleanUrl(CFG.url);
+  if (!url || !key || /PASTE/i.test(url + key)) return Promise.reject({ message: 'This page is not set up yet' });
+  var headers = { 'Content-Type': 'application/json', 'apikey': key };
+  if (/^eyJ/.test(key)) headers.Authorization = 'Bearer ' + key;
+  return fetch(url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+    .then(function (res) {
+      return res.text().then(function (txt) {
+        var j = null;
+        try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+        if (!res.ok) throw { message: (j && (j.message || j.hint)) || ('Server error ' + res.status) };
+        if (j && j.__error) throw { message: j.__error, dead: true };
+        return j;
+      });
+    }, function () { throw { message: 'No internet — check the signal and open the link again' }; });
+}
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; }
+function toast(m) { var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = 'none'; }, 3000); }
+
+var CODE = (location.search.match(/[?&]k=([a-z0-9]+)/i) || [])[1] || '';
+var items = [], unit = {}, q = '', ord = {}, view = 'list', endAt = 0, note = '';
+try { ord = JSON.parse(store('ord_' + CODE) || '{}') || {}; } catch (e) { ord = {}; }
+function save() { store('ord_' + CODE, JSON.stringify(ord)); }
+function lines() { return items.map(function (x) { return x[0]; }).filter(function (n) { return ord[n] > 0; }); }
+
+function dead(msg) {
+  $('till').hidden = true;
+  $('view').innerHTML = '<div class="dead"><b>⏱ Link expired</b>' + esc(msg || 'This link has expired. Ask for a new one.') + '</div>';
+  view = 'dead';
+}
+function load() {
+  if (!CODE) { dead('This link is not complete. Ask for the link again.'); return; }
+  rpc('order_link_items', { p_code: CODE }).then(function (d) {
+    items = d.items || [];
+    items.forEach(function (x) { unit[x[0]] = x[1]; });
+    endAt = Date.now() + (d.left || 0) * 1000;
+    $('till').textContent = 'Link works till ' + d.till; $('till').hidden = false;
+    render();
+  }, function (e) { if (e.dead) dead(e.message); else $('view').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+}
+setInterval(function () { if (endAt && Date.now() > endAt && view !== 'dead') dead(); }, 15000);
+
+function render() {
+  if (view === 'dead') return;
+  if (view === 'send') { renderSend(); return; }
+  var v = $('view');
+  if (!$('q')) {
+    v.innerHTML = '<div class="fs"><input id="q" type="search" placeholder="🔍 Find item" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div><div id="list"></div>';
+    $('q').value = q;
+    $('q').oninput = function () { q = this.value; renderList(); };
+  }
+  renderList();
+}
+function renderList() {
+  var toks = norm(q) ? norm(q).split(' ') : [];
+  var show = items.filter(function (x) {
+    if (!toks.length) return true;
+    var t = norm(x[0] + ' ' + x[2]);
+    return toks.every(function (k) { return t.indexOf(k) >= 0; });
+  });
+  // picked items first, so they are easy to check
+  show.sort(function (a, b) { return (ord[b[0]] > 0) - (ord[a[0]] > 0); });
+  var n = lines().length;
+  var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' in the main godown · + / − is 1 ' + 'pack</div>';
+  if (!items.length) h += '<div class="empty">No items in stock right now.</div>';
+  else if (!show.length) h += '<div class="empty">No item matches</div>';
+  h += show.slice(0, 200).map(function (x) {
+    var k = ord[x[0]] || 0;
+    return '<div class="gr' + (k ? ' on' : '') + '"><div class="nm">' + esc(x[0]) + (x[3] ? '<small>' + esc(x[3]) + '</small>' : '') + '</div>' +
+      '<button class="pm" data-d="-1" data-i="' + esc(x[0]) + '" aria-label="One less">−</button>' +
+      '<div class="oq' + (k ? '' : ' z') + '">' + k + '<small>' + esc(x[1]) + '</small></div>' +
+      '<button class="pm" data-d="1" data-i="' + esc(x[0]) + '" aria-label="One more">+</button></div>';
+  }).join('');
+  if (show.length > 200) h += '<div class="empty">Type to find more items</div>';
+  h += '<div class="obar"><span>' + (n ? n + ' item' + (n === 1 ? '' : 's') + ' picked' : 'Tap + on what you need') + '</span>' +
+    (n ? '<button data-next="1">Next →</button>' : '') + '</div>';
+  $('list').innerHTML = h;
+}
+function text() {
+  var d = new Date(Date.now() + 330 * 60000), mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()];
+  var who = String(store('ordName') || '').trim();
+  var t = '*Order' + (who ? ' from ' + who : '') + ' – ' + d.getUTCDate() + ' ' + mon + '*\n';
+  if (note.trim()) t += note.trim() + '\n';
+  t += '\n' + lines().map(function (n) { return n + ' – ' + ord[n] + ' ' + unit[n]; }).join('\n');
+  return t;
+}
+function renderSend() {
+  var v = $('view');
+  if (!lines().length) { view = 'list'; v.innerHTML = ''; render(); return; }
+  v.innerHTML = '<button class="big grey" data-back="1" style="margin-top:0">← Back to items</button>' +
+    '<label>Your name<input class="in" id="who" autocomplete="name" placeholder="e.g. Ramesh"></label>' +
+    '<label>Note (optional)<input class="in" id="note" autocomplete="off" placeholder="e.g. need by 11 AM"></label>' +
+    '<div class="owa" id="owa"></div>' +
+    '<div class="row2"><button class="big grey" data-copy="1">📋 Copy</button><button class="big" data-wa="1">💬 Send on WhatsApp</button></div>' +
+    '<button class="big grey" data-clear="1" style="margin-top:16px">🗑 Start again</button>';
+  $('who').value = store('ordName') || ''; $('note').value = note;
+  $('who').oninput = function () { store('ordName', this.value); $('owa').textContent = text(); };
+  $('note').oninput = function () { note = this.value; $('owa').textContent = text(); };
+  $('owa').textContent = text();
+}
+function copy() {
+  var t = text(), done = function () { toast('Copied — paste it in WhatsApp'); };
+  var old = function () {
+    var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Could not copy — press and hold the text to copy it'); }
+    document.body.removeChild(a);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, old); else old();
+}
+var clearArm = 0;
+$('view').addEventListener('click', function (ev) {
+  var b;
+  if ((b = ev.target.closest('[data-d]'))) {
+    var n = b.getAttribute('data-i'), k = Math.max(0, (ord[n] || 0) + Number(b.getAttribute('data-d')));
+    if (k) ord[n] = k; else delete ord[n];
+    save(); renderList(); return;
+  }
+  if (ev.target.closest('[data-next]')) { view = 'send'; render(); $('view').parentNode.scrollTop = 0; return; }
+  if (ev.target.closest('[data-back]')) { view = 'list'; $('view').innerHTML = ''; render(); return; }
+  if (ev.target.closest('[data-copy]')) { copy(); return; }
+  if (ev.target.closest('[data-wa]')) { location.href = 'https://wa.me/?text=' + encodeURIComponent(text()); return; }
+  if ((b = ev.target.closest('[data-clear]'))) {
+    if (Date.now() - clearArm > 3000) { clearArm = Date.now(); b.textContent = 'Tap again to start again'; return; }
+    ord = {}; note = ''; save(); view = 'list'; $('view').innerHTML = ''; render(); toast('Cleared');
+  }
+});
+load();
+</script>
+</body>
+</html>

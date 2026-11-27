@@ -124,6 +124,10 @@
   .obar button{border:0;border-radius:10px;background:var(--hdr);color:#fff;font-weight:700;font-size:14px;padding:10px 14px}
   .owa{white-space:pre-wrap;background:#e7f6ee;border:1px solid #cfe9db;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.55;margin:10px 0;color:#1d3b2c}
   .orow{display:flex;gap:8px}.orow .gbig{flex:1}
+  .gr.oth{background:#f4f8fc;border-style:dashed;border-color:#b9cde0}
+  .otag{display:inline-block;font-size:10px;font-weight:700;color:#3b6a92;background:#dfeaf5;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+  .osec{margin:14px 2px 6px;font-size:13px;font-weight:700;color:#3b6a92}
+  .osec small{display:block;font-weight:400;color:var(--muted);font-size:12px}
   .gnote{width:100%;font-size:16px;padding:9px;border:1px solid #c9cfcb;border-radius:8px;box-sizing:border-box}
   .gl{display:flex;align-items:center;gap:8px}
   .gl .gi{flex:1;min-width:0}
@@ -142,6 +146,13 @@
   .mbox .hint{font-size:13px;color:var(--muted);margin:4px 0 6px}
   .mbox .ok.red{background:var(--red)}
   .mbox .ok.grey{background:#eee;color:#555;margin-top:6px}
+  .olbar{margin:0 0 8px}.olbar button{width:100%;border:1px dashed #9fb8b2;background:#fff;border-radius:10px;padding:10px;font-size:14px;font-weight:600;color:var(--hdr)}
+  .olt{display:flex;gap:6px;margin:8px 0}.olt button{flex:1;border:1px solid #c9cfcb;background:#fff;border-radius:16px;padding:8px 4px;font-size:14px}
+  .olt button.on{background:var(--hdr);border-color:var(--hdr);color:#fff}
+  .ollink{word-break:break-all;font-size:12px;background:#f2f4f3;border-radius:8px;padding:8px;margin-top:8px;color:#333}
+  .olact{margin-top:12px;border-top:1px solid #eee;padding-top:8px;font-size:13px;color:var(--muted)}
+  .olact div{display:flex;align-items:center;gap:8px;padding:5px 0}.olact div span{flex:1}
+  .olact button{border:1px solid #e0b4b4;background:#fff;color:#b33;border-radius:8px;padding:5px 10px;font-size:12px}
 </style>
 </head>
 <body>
@@ -176,6 +187,17 @@
     <div class="hint">You pressed Back.</div>
     <button class="ok" id="leaveStay">Stay</button>
     <button class="ok grey" id="leaveGo">Leave</button>
+  </div>
+</div>
+<div class="modal" id="ol" hidden>
+  <div class="mbox">
+    <b>🔗 Order link for staff</b>
+    <div class="hint">Staff open it without logging in, pick items in stock in the main godown (names only, no quantities) and send the list to you on WhatsApp. The link stops working after the time you choose.</div>
+    <div class="olt" id="olT"><button data-olm="60" class="on">1 hour</button><button data-olm="120">2 hours</button><button data-olm="240">4 hours</button></div>
+    <div id="olOut"></div>
+    <button class="ok" id="olMake">Make link</button>
+    <div class="olact" id="olAct"></div>
+    <button class="ok grey" id="olClose">Close</button>
   </div>
 </div>
 <div class="modal" id="me" hidden>
@@ -347,7 +369,7 @@ function render() {
   var v = $('view');
   if (!$('q')) {
     v.innerHTML = '<div class="fs"><input id="q" type="search" placeholder="🔍 Find item" autocomplete="off" autocorrect="off" ' +
-      'autocapitalize="off" spellcheck="false"><div id="filters"></div></div><div id="list"></div>';
+      'autocapitalize="off" spellcheck="false"><div id="filters"></div></div><div class="olbar"><button data-olink="1">🔗 Order link for staff</button></div><div id="list"></div>';
     $('q').value = q;
     $('q').oninput = function () { q = this.value; renderList(); };
   }
@@ -491,7 +513,8 @@ function gRenderList() {
   if (eb) { eb.className = 'gedit' + (gEdit ? ' on' : ''); eb.textContent = gEdit ? '✓ Done' : '✏️ Edit stock'; eb.style.display = gOrd ? 'none' : ''; }
   var ob = $('gordb');
   if (ob) { ob.className = gOrd ? 'on' : ''; ob.textContent = gOrd ? '✓ Order mode on' : '🧾 Order'; }
-  if (fb) fb.style.visibility = gOrd ? 'hidden' : '';
+  if (fb) fb.parentNode.style.display = gOrd ? 'none' : '';
+  if ($('gq')) $('gq').placeholder = gOrd ? '🔍 Find any item to order' : '🔍 Find item in ' + gd;
   if (gOrd) { gRenderOrdList(box, toks); return; }
   var show = gRows.filter(function (r) {
     var z = Math.round(r[1] * 1000) / 1000;
@@ -518,11 +541,13 @@ function gRenderList() {
 /* ---------- order for the shop: pick what to bring, then copy to WhatsApp (nothing is saved to the database) ---------- */
 function ordGet() { try { return JSON.parse(store('stockOrd_' + gd) || '{}') || {}; } catch (e) { return {}; } }
 function ordPut(o) { store('stockOrd_' + gd, JSON.stringify(o)); }
-function ordLines() {
+function inGd(n) { return (gRows || []).some(function (r) { return r[0] === n; }); }
+function ordLines(which) {          // which: 'gd' = items of this godown, 'other' = any other item, '' = both
   var o = ordGet();
-  return (gRows || []).map(function (r) { return r[0]; }).concat(Object.keys(o).filter(function (n) {
-    return !(gRows || []).some(function (r) { return r[0] === n; });
-  })).filter(function (n) { return o[n] > 0; }).map(function (n) { return [n, o[n]]; });
+  var gdn = (gRows || []).map(function (r) { return r[0]; }).filter(function (n) { return o[n] > 0; });
+  var oth = Object.keys(o).filter(function (n) { return o[n] > 0 && !inGd(n); }).sort();
+  var list = which === 'gd' ? gdn : which === 'other' ? oth : gdn.concat(oth);
+  return list.map(function (n) { return [n, o[n]]; });
 }
 function packsText(n, k) {
   var f = factor(n, UNITS[0]);
@@ -543,13 +568,32 @@ function gRenderOrdList(box, toks) {
   var lines = ordLines();
   var h = '<div class="cnt">' + show.length + ' item' + (show.length === 1 ? '' : 's') + ' · emptiest first · + / − is 1 big pack</div>';
   if (!gRows.length) h += '<div class="empty">Nothing in ' + esc(gd) + ' yet. Use ＋ Add item first.</div>';
-  else if (!show.length) h += '<div class="empty">No item matches</div>';
+  else if (!show.length) h += '<div class="empty">No ' + esc(gd) + ' item matches</div>';
   h += show.map(function (r) {
     var n = r[0], k = o[n] || 0, m = mainQ ? mainQ[n] : null;
     var z = Math.round(r[1] * 1000) / 1000;
     return '<div class="gr"><div class="nm">' + esc(n) +
       '<span class="ms"><span class="' + (z <= 0 ? 'no' : z < gPack(n) ? 'lo' : '') + '">' + esc(gd) + ': ' + esc(packText(n, r[1])) + '</span>' +
       ' · Main: ' + (m == null ? '…' : esc(packText(n, m))) + '</span></div>' +
+      '<button class="pm" data-go="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
+      '<div class="oq' + (k ? '' : ' z') + '">' + fmt(k) + '<small>' + esc(gPackName(n)) + '</small></div>' +
+      '<button class="pm" data-go="1" data-gi="' + esc(n) + '" aria-label="One more">+</button></div>';
+  }).join('');
+  // other items (not kept in this godown): those already in the order, plus search matches
+  var oth = ordLines('other').map(function (x) { return x[0]; });
+  if (toks.length) {
+    Object.keys(pack).filter(function (n) {
+      if (inGd(n) || oth.indexOf(n) >= 0) return false;
+      var p = pack[n] || [], tx = norm(n + ' ' + (p[4] || ''));
+      return toks.every(function (k) { return tx.indexOf(k) >= 0; });
+    }).sort().slice(0, 15).forEach(function (n) { oth.push(n); });
+  }
+  h += '<div class="osec">Other items<small>' + (toks.length ? 'Not kept in ' + esc(gd) + ' — tap + to add to the order'
+    : 'Not kept in ' + esc(gd) + '. Search above to add one to the order.') + '</small></div>';
+  h += oth.map(function (n) {
+    var k = o[n] || 0, m = mainQ ? mainQ[n] : null;
+    return '<div class="gr oth"><div class="nm">' + esc(n) + '<span class="otag">OTHER</span>' +
+      '<span class="ms">Main: ' + (m == null ? '…' : esc(packText(n, m))) + '</span></div>' +
       '<button class="pm" data-go="-1" data-gi="' + esc(n) + '" aria-label="One less">−</button>' +
       '<div class="oq' + (k ? '' : ' z') + '">' + fmt(k) + '<small>' + esc(gPackName(n)) + '</small></div>' +
       '<button class="pm" data-go="1" data-gi="' + esc(n) + '" aria-label="One more">+</button></div>';
@@ -567,7 +611,10 @@ function ordText() {
   var d = new Date(), mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
   var t = '*Order for ' + gd + ' – ' + d.getDate() + ' ' + mon + '*\n';
   if (ordNote.trim()) t += ordNote.trim() + '\n';
-  t += '\n' + ordLines().map(function (x, i) { return (i + 1) + '. ' + x[0] + ' – ' + packsText(x[0], x[1]); }).join('\n');
+  var line = function (x) { return x[0] + ' – ' + packsText(x[0], x[1]); };
+  var a = ordLines('gd'), b = ordLines('other');
+  if (a.length) t += '\n' + a.map(line).join('\n');
+  if (b.length) t += '\n\n_Other items:_\n' + b.map(line).join('\n');
   return t + '\n\n– ' + myName;
 }
 function gRenderOrd() {
@@ -758,7 +805,59 @@ function gUnpin() {
 }
 
 /* ---------- start ---------- */
+/* ---------- 🔗 order link for staff without the app (order.html) ---------- */
+var olMins = 60, olLast = null;
+function olUrl(code) { return location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '') + 'order.html?k=' + code; }
+function olOpen() { olLast = null; $('olOut').innerHTML = ''; $('olMake').hidden = false; $('ol').hidden = false; olList(); }
+function olList() {
+  rpc('order_link_list', { p_token: TOKEN }).then(function (l) {
+    l = l || [];
+    $('olAct').innerHTML = l.length ? 'Links working now:' + l.map(function (x) {
+      return '<div><span>Made ' + esc(x.made) + ' by ' + esc(x.by) + ' · till ' + esc(x.till) + '</span><button data-olstop="' + esc(x.code) + '">Stop</button></div>';
+    }).join('') : '';
+  }, function () {});
+}
+function olMake() {
+  $('olMake').disabled = true; $('olMake').textContent = 'Making…';
+  rpc('order_link_make', { p_token: TOKEN, p_minutes: olMins }).then(function (r) {
+    $('olMake').disabled = false; $('olMake').textContent = 'Make link'; $('olMake').hidden = true;
+    olLast = r;
+    $('olOut').innerHTML = '<div class="ollink">' + esc(olUrl(r.code)) + '</div><div class="hint">Works till ' + esc(r.till) + '</div>' +
+      '<div class="olt"><button data-olcopy="1">📋 Copy</button><button data-olwa="1" class="on">💬 WhatsApp</button></div>';
+    olList();
+  }, function (e) { $('olMake').disabled = false; $('olMake').textContent = 'Make link'; toast('⚠ ' + errMsg(e)); });
+}
+function olMsg() { return 'Order from main godown — open this link, tap + on what you need, then send it back on WhatsApp (works till ' + olLast.till + '):\n' + olUrl(olLast.code); }
+function olCopy(t, ok) {
+  var done = function () { toast(ok); };
+  var old = function () {
+    var a = document.createElement('textarea'); a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Could not copy — press and hold the link to copy it'); }
+    document.body.removeChild(a);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, old); else old();
+}
 window.onload = function () {
+  $('ol').addEventListener('click', function (ev) {
+    var b;
+    if ((b = ev.target.closest('[data-olm]'))) {
+      olMins = Number(b.getAttribute('data-olm'));
+      [].forEach.call($('olT').children, function (x) { x.className = x === b ? 'on' : ''; });
+      if (olLast) { olLast = null; $('olOut').innerHTML = ''; $('olMake').hidden = false; }
+      return;
+    }
+    if (ev.target.closest('#olMake')) { olMake(); return; }
+    if (ev.target.closest('#olClose')) { $('ol').hidden = true; return; }
+    if (ev.target.closest('[data-olcopy]') && olLast) { olCopy(olMsg(), 'Copied — paste it in WhatsApp'); return; }
+    if (ev.target.closest('[data-olwa]') && olLast) { location.href = 'https://wa.me/?text=' + encodeURIComponent(olMsg()); return; }
+    if ((b = ev.target.closest('[data-olstop]'))) {
+      var c = b.getAttribute('data-olstop');
+      rpc('order_link_stop', { p_token: TOKEN, p_code: c }).then(function () {
+        if (olLast && olLast.code === c) { olLast = null; $('olOut').innerHTML = ''; $('olMake').hidden = false; }
+        toast('Link stopped'); olList();
+      }, function (e) { toast('⚠ ' + errMsg(e)); });
+    }
+  });
   $('modes').addEventListener('click', function (ev) { var b = ev.target.closest('[data-gd]'); if (b) setGodown(b.getAttribute('data-gd')); });
   $('view').addEventListener('change', function (ev) {
     var t = ev.target;
@@ -788,6 +887,7 @@ window.onload = function () {
     if ((g = ev.target.closest('[data-gadd]'))) { gAdd(g.getAttribute('data-gadd')); return; }
     if (ev.target.closest('[data-gcount]')) { gSetCount(); return; }
     if (ev.target.closest('[data-gunpin]')) { gUnpin(); return; }
+    if (ev.target.closest('[data-olink]')) { olOpen(); return; }
     var b = ev.target.closest('[data-sk]');
     if (b) { openItem(b.getAttribute('data-sk')); return; }
     if (ev.target.closest('[data-back]')) { back(); return; }
@@ -803,7 +903,8 @@ window.onload = function () {
   armBack();
   window.addEventListener('popstate', function () {
     if (leaving) return;
-    if (!$('me').hidden) $('me').hidden = true;
+    if (!$('ol').hidden) $('ol').hidden = true;
+    else if (!$('me').hidden) $('me').hidden = true;
     else if (!$('leave').hidden) $('leave').hidden = true;
     else if (gd && gview === 'take') { gview = 'lists'; gRender(); }
     else if (gd && gview !== 'list') gBack();

@@ -188,6 +188,18 @@
   .ev .row{margin:8px 0 0}
   .ev .b{width:100%;max-width:100%;box-shadow:none;border:1px solid #eee}
   .lnc .in1{font-size:16px;padding:10px 12px}
+  .dayh{display:flex;align-items:center;gap:8px;margin:4px 2px 8px;font-size:13px;font-weight:700;color:var(--muted)}
+  .dayh span{flex:1}
+  .dayh button{border:1px solid #cfcfcf;background:#fff;border-radius:14px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--hdr)}
+  .dayx{text-align:center;color:var(--muted);font-size:13px;margin:0 0 12px}
+  #ei .mbox{max-height:92vh;overflow-y:auto}
+  .eil{max-height:52vh;overflow-y:auto;margin-top:8px}
+  .eil button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;background:#fff;padding:11px 4px;font-size:15px}
+  .eisec{margin-top:14px;padding-top:10px;border-top:1px solid #eee;font-size:13px;font-weight:700;color:var(--hdr)}
+  .eino{font-size:12px;color:var(--muted);margin-top:4px}
+  .eid{display:flex;gap:6px;align-items:flex-end}.eid .nl{flex:1;min-width:0}.eid .in1{min-width:0;width:100%;font-size:15px}
+  .eid button{flex-shrink:0;border:1px solid #cfcfcf;background:#fff;border-radius:8px;padding:9px 8px;font-size:13px;margin-bottom:1px}
+  .eiw{background:#fdecec;color:#8a1c1c;border-radius:8px;padding:8px 10px;font-size:12px;margin-top:8px}
   /* saved lists */
   .fs{margin-bottom:10px}
   .fs input{width:100%;font-size:15px;padding:10px 14px;border:1px solid #ccc;border-radius:20px;outline:none;background:#fff}
@@ -336,7 +348,7 @@
 </head>
 <body>
 <header>
-  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v21</small></div>
+  <div class="t"><a href="./" style="color:inherit;text-decoration:none"><span class="brand">GSSTOCK</span></a> <small id="vlabel">v22</small></div>
   <button id="inst" hidden>⤓ Install</button>
   <button id="rep" title="Activity PDF">📄 PDF</button>
   <button id="who">👤</button>
@@ -376,6 +388,7 @@
   <div class="mbox">
     <b id="meName"></b>
     <div class="hint">Your entries are saved in your name.</div>
+    <button class="ok" id="meEdit" hidden>✏️ Edit an item</button>
     <button class="ok" id="meOut" style="background:#d9534f">Log out</button>
     <button class="ok" id="meClose" style="background:#eee;color:#555;margin-top:6px">Close</button>
   </div>
@@ -406,6 +419,37 @@
     <div class="nerr" id="niErr"></div>
     <button class="ok" id="niOk">Add item</button>
     <button class="ok" id="niNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
+  </div>
+</div>
+<div class="modal" id="ei" hidden>
+  <div class="mbox">
+    <b id="eiT">✏️ Edit item</b>
+    <div id="eiPick">
+      <input class="in1" id="eiQ" type="search" placeholder="🔍 Find the item to change" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-top:8px">
+      <div class="eil" id="eiL"></div>
+    </div>
+    <div id="eiForm" hidden>
+      <div class="hint" id="eiNow"></div>
+      <label class="nl">Item name<input class="in1" id="eiName" autocomplete="off" autocapitalize="characters"></label>
+      <label class="nl">Loose unit <span class="nh">(PC, KG, DZ…)</span><input class="in1" id="eiLu" autocomplete="off" autocapitalize="characters"></label>
+      <div class="nrow"><label class="nl">Big pack name<input class="in1" id="eiBn" autocomplete="off" autocapitalize="characters" placeholder="BAG, CTN…"></label>
+        <label class="nl">Loose in it<input class="in1" id="eiBag" type="number" inputmode="decimal" min="0" step="any"></label></div>
+      <div class="nrow"><label class="nl">Small pack name<input class="in1" id="eiSn" autocomplete="off" autocapitalize="characters" placeholder="optional"></label>
+        <label class="nl">Loose in it<input class="in1" id="eiMini" type="number" inputmode="decimal" min="0" step="any"></label></div>
+      <label class="nl">Category<input class="in1" id="eiCat" list="niCats" autocomplete="off"></label>
+      <div class="eisec">Opening stock</div>
+      <div class="nrow"><label class="nl" id="eiObL">Big packs<input class="in1" id="eiOb" type="number" inputmode="decimal" min="0" step="any"></label>
+        <label class="nl" id="eiOmL">Small packs<input class="in1" id="eiOm" type="number" inputmode="decimal" min="0" step="any"></label>
+        <label class="nl" id="eiOlL">Loose<input class="in1" id="eiOl" type="number" inputmode="decimal" min="0" step="any"></label></div>
+      <div class="eid"><label class="nl">Opening date <span class="nh">(stock counts from here)</span><input class="in1" id="eiOd" type="datetime-local"></label>
+        <button type="button" id="eiOdNow">Now</button><button type="button" id="eiOdClr">Clear</button></div>
+      <div class="eino">Counted the stock today? Type the count above and press <strong>Now</strong> — older entries then stop counting.</div>
+      <div class="eiw" id="eiWarn" hidden></div>
+      <label class="nl">Edit PIN<input class="in1" id="eiPin" type="password" inputmode="numeric" autocomplete="off"></label>
+      <div class="nerr" id="eiErr"></div>
+      <button class="ok" id="eiOk">Save changes</button>
+    </div>
+    <button class="ok" id="eiNo" style="background:#eee;color:#555;margin-top:6px">Cancel</button>
   </div>
 </div>
 <div class="modal" id="pm" hidden>
@@ -485,6 +529,8 @@ var RPC = {
   gdHide:      function (g, no, on) { return ['gd_hide_list', { p_token: tk(), p_godown: g, p_no: no, p_hide: !!on }]; },
   gdTake:      function (g, no, lines) { return ['gd_take', { p_token: tk(), p_godown: g, p_no: no, p_lines: lines }]; },
   addItem:     function (p) { return ['add_item', { p_token: tk(), p: p }]; },
+  getItem:     function (n) { return ['get_item', { p_token: tk(), p_name: n }]; },
+  editItem:    function (pin, p) { return ['edit_item', { p_token: tk(), p_pin: pin || '', p: p }]; },
   getState:    function (v, since) { return ['get_state', { p_token: tk(), p_ver: v || '', p_since: since || null }]; },
   saveEntry:   function (p) { return ['save_entry', { p_token: tk(), p: p }]; },
   setChecked:  function (row, no, c) { return ['set_checked', { p_token: tk(), p_line: row, p_no: no, p_checked: !!c }]; },
@@ -512,10 +558,11 @@ var google = { script: { get run() {
   return r;
 } } };
 
-var APP_VER = '21';
+var APP_VER = '22';
 var TR_TYPE = 'In Transport';
 var UNITS = ['Bag', 'Mini', 'Loose'];
 var pack = {}, items = [], idx = [], recent = [], lastPick = [], transports = [], names = [];
+var actShowOld = false, actHideToday = store('actHideToday') === '1';
 var tab = 'OUT', trView = 'new', listView = 'act', evOpen = {}, actType = 'all', activity = [], lnames = [], listNames = { IN: '', OUT: '' }, fqText = { tr: '', lists: '', stock: '' };
 var drafts = { IN: [], OUT: [], TR: [] }, uids = { IN: '', OUT: '', TR: '' };
 var current = '', draftOpen = false, flash = '';
@@ -731,7 +778,7 @@ function logOut() {
   if (t) rpcCall('logout', { p_token: t }).then(function () {}, function () {});
   showLogin('');
 }
-function setSeeStock(v) { seeStock = !!v; }   // stock is shown on its own link (stock.html), not in this app
+function setSeeStock(v) { seeStock = !!v; var b = $('meEdit'); if (b) b.hidden = !seeStock; }   // stock is shown on its own link (stock.html), not in this app
 // run fn if logged in, otherwise show the login screen
 function askName(cb) { if (TOKEN) { if (cb) cb(); } else showLogin(''); }
 function withName(fn) { if (TOKEN) fn(); else showLogin(''); }
@@ -1259,6 +1306,7 @@ function entryHtml(e, forceOpen) {
 var SHOW_ACT = { 'Edited': 1, 'Saved': 1, 'Added to LR': 1, 'Received': 1, 'Part received': 1, 'Received full LR': 1 };
 var ACT_ICON = { 'Added to LR': '➕', 'Received': '✅', 'Received full LR': '✅', 'Part received': '🟠',
   'Edited': '✏️', 'Receipt undone': '↺', 'Ticked': '☑️', 'Unticked': '⬜', 'LR details changed': '✎' };
+function todayLabel() { var d = new Date(Date.now() + 330 * 60000); return d.getUTCDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()] + ','; }
 function listName(a) {               // older activity rows say "Raju #12" or "#12" — the number is not shown
   var t = String(a.list || '').replace(/\s*#\d+\s*$/, '').trim();
   return t || (a.type === 'Stock Out' ? 'Stock OUT' : a.type === 'Stock In' ? 'Stock IN' : String(a.list || ''));
@@ -1315,8 +1363,23 @@ function renderActivity(area) {
   }
   var more = actEnd ? '<div class="empty" style="padding:10px">' + (fq ? 'No more matches' : 'No older entries') + '</div>'
     : '<button class="more" id="actMore">' + (actLoading ? 'Loading…' : fq ? '🔍 Search older entries' : '⬇ Load older entries') + '</button>';
-  area.innerHTML = (show.length ? show.map(evHtml).join('') :
-    '<div class="empty">' + (fq ? 'Nothing matches in recent entries' : 'No entries yet.') + '</div>') + ((show.length || fq || all.length) ? more : '');
+  if (fq) {                     // searching: show every match, today or not
+    area.innerHTML = (show.length ? show.map(evHtml).join('') : '<div class="empty">Nothing matches in recent entries</div>') + more;
+    return;
+  }
+  // today's entries on top (can be folded away); earlier days stay folded until asked for
+  var today = istNow().slice(0, 10);
+  var isToday = function (a) { return a.day ? a.day === today : String(a.time || '').indexOf(todayLabel()) === 0; };
+  var tod = show.filter(isToday), old = show.filter(function (a) { return !isToday(a); });
+  var h = '<div class="dayh"><span>Today · ' + tod.length + ' entr' + (tod.length === 1 ? 'y' : 'ies') + '</span>' +
+    '<button data-acttoday="1">' + (actHideToday ? 'Show' : 'Hide') + '</button></div>';
+  if (!actHideToday) h += tod.length ? tod.map(evHtml).join('') : '<div class="dayx">Nothing yet today.</div>';
+  if (!actShowOld) h += '<button class="more" data-actold="1">▸ Show earlier days</button>';
+  else {
+    h += '<div class="dayh"><span>Earlier</span><button data-actold="1">Hide</button></div>' +
+      (old.length ? old.map(evHtml).join('') : '') + more;
+  }
+  area.innerHTML = h;
 }
 
 function loadOlderAct() {
@@ -1546,6 +1609,84 @@ function saveNewItem() {
     .addItem(p);
 }
 
+/* ---------- ✏️ edit an item (packing, opening stock, opening date) — "Can see stock" people, with the Edit PIN ---------- */
+var eiCur = null;
+function istNow() { return new Date(Date.now() + 330 * 60000).toISOString().slice(0, 16); }
+function openEditItem() {
+  eiCur = null;
+  $('eiT').textContent = '✏️ Edit item';
+  $('eiPick').hidden = false; $('eiForm').hidden = true;
+  $('eiQ').value = ''; paintEiList();
+  $('ei').hidden = false;
+  setTimeout(function () { $('eiQ').focus(); }, 60);
+}
+function paintEiList() {
+  var toks = norm($('eiQ').value) ? norm($('eiQ').value).split(' ') : [];
+  var list = items.filter(function (n) {
+    if (!toks.length) return true;
+    var p = pack[n] || [], t = norm(n + ' ' + (p[4] || ''));
+    return toks.every(function (k) { return t.indexOf(k) >= 0; });
+  });
+  $('eiL').innerHTML = list.slice(0, 40).map(function (n) { return '<button data-ei="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') +
+    (list.length > 40 ? '<div class="eino" style="padding:8px 4px">Type to find more…</div>' : '') +
+    (!list.length ? '<div class="eino" style="padding:8px 4px">No item matches</div>' : '');
+}
+function loadEditItem(n) {
+  $('eiL').innerHTML = '<div class="eino" style="padding:8px 4px">Opening ' + esc(n) + '…</div>';
+  google.script.run.withSuccessHandler(function (it) {
+    eiCur = it;
+    $('eiT').textContent = '✏️ ' + it.name;
+    $('eiPick').hidden = true; $('eiForm').hidden = false;
+    var v = function (x) { return x ? String(x) : ''; };
+    $('eiName').value = it.name; $('eiLu').value = it.lu; $('eiBn').value = it.bn; $('eiBag').value = v(it.bag);
+    $('eiSn').value = it.sn; $('eiMini').value = v(it.mini); $('eiCat').value = it.cat;
+    $('eiOb').value = v(it.ob); $('eiOm').value = v(it.om); $('eiOl').value = v(it.ol); $('eiOd').value = it.odate || '';
+    $('eiPin').value = ''; $('eiErr').textContent = '';
+    $('eiNow').textContent = 'In stock now: ' + packText(it.name, it.total || 0) + ' · ' + (it.cnt || 0) + ' entr' + (it.cnt === 1 ? 'y' : 'ies') +
+      (it.odate ? ' since the opening date' : '');
+    eiWarn();
+  }).withFailureHandler(function (e) { paintEiList(); toast('⚠ ' + errMsg(e)); }).getItem(n);
+}
+function eiWarn() {
+  var it = eiCur; if (!it) return;
+  var up = function (x) { return String(x || '').trim().toUpperCase(); };
+  $('eiBn').placeholder = UNITS[0]; $('eiSn').placeholder = UNITS[1] + ' (optional)';
+  $('eiObL').firstChild.nodeValue = 'Opening ' + (up($('eiBn').value) || UNITS[0]);
+  $('eiOmL').firstChild.nodeValue = 'Opening ' + (up($('eiSn').value) || UNITS[1]);
+  $('eiOlL').firstChild.nodeValue = 'Opening ' + (up($('eiLu').value) || 'loose');
+  var pk = Number($('eiBag').value || 0) !== Number(it.bag || 0) || Number($('eiMini').value || 0) !== Number(it.mini || 0) ||
+           up($('eiLu').value) !== up(it.lu);
+  var fresh = $('eiOd').value && $('eiOd').value !== (it.odate || '');
+  var w = $('eiWarn');
+  if (pk && it.cnt && !fresh) {
+    w.hidden = false;
+    w.innerHTML = '⚠ Packing changed, but ' + it.cnt + ' entr' + (it.cnt === 1 ? 'y was' : 'ies were') + ' saved in the old packing — they will now count wrong. ' +
+      'Best: type today\'s counted stock in Opening stock and press <strong>Now</strong> on Opening date.';
+  } else w.hidden = true;
+}
+function saveEditItem() {
+  var it = eiCur; if (!it) return;
+  var p = { old: it.name, name: $('eiName').value.trim(), lu: $('eiLu').value.trim(), bn: $('eiBn').value.trim(), bag: $('eiBag').value.trim(),
+            sn: $('eiSn').value.trim(), mini: $('eiMini').value.trim(), cat: $('eiCat').value.trim(),
+            ob: $('eiOb').value.trim(), om: $('eiOm').value.trim(), ol: $('eiOl').value.trim(), odate: $('eiOd').value.trim() };
+  var err = function (m, id) { $('eiErr').textContent = m; if (id) $(id).focus(); };
+  if (!p.name) return err('Type the item name', 'eiName');
+  if (!p.lu) return err('Type the loose unit (PC, KG…)', 'eiLu');
+  if (p.bn && !(Number(p.bag) > 0)) return err('How many ' + p.lu.toUpperCase() + ' are in one ' + p.bn.toUpperCase() + '?', 'eiBag');
+  if (p.sn && !(Number(p.mini) > 0)) return err('How many ' + p.lu.toUpperCase() + ' are in one ' + p.sn.toUpperCase() + '?', 'eiMini');
+  if (!$('eiPin').value.trim()) return err('Type the Edit PIN', 'eiPin');
+  $('eiOk').disabled = true; $('eiOk').textContent = 'Saving…'; $('eiErr').textContent = '';
+  google.script.run.withSuccessHandler(function (r) {
+    $('eiOk').disabled = false; $('eiOk').textContent = 'Save changes';
+    $('ei').hidden = true;
+    toast('✏️ ' + ((r && r.name) || p.name) + ' saved' + (r && r.warn ? ' — ⚠ ' + r.warn + ' old entr' + (r.warn === 1 ? 'y' : 'ies') + ' in the old packing' : '') + ' · sheet updates in a few minutes');
+    poll(true);
+  }).withFailureHandler(function (e) {
+    $('eiOk').disabled = false; $('eiOk').textContent = 'Save changes';
+    $('eiErr').textContent = errMsg(e);
+  }).editItem($('eiPin').value.trim(), p);
+}
+
 /* ---------- actions on saved lists ---------- */
 function serverCall(key, fnName, args, okMsg, onFail) {
   busy[key] = true;
@@ -1597,6 +1738,8 @@ function onClick(ev) {
   if ((b = t.closest('[data-trv]'))) { trView = b.getAttribute('data-trv'); current = ''; renderView(); return; }
   if ((b = t.closest('[data-lv]'))) { listView = b.getAttribute('data-lv'); renderView(); return; }
   if (t.id === 'actMore') { loadOlderAct(); return; }
+  if (t.closest('[data-acttoday]')) { actHideToday = !actHideToday; store('actHideToday', actHideToday ? '1' : ''); renderList(); return; }
+  if (t.closest('[data-actold]')) { actShowOld = !actShowOld; renderList(); return; }
   if ((b = t.closest('[data-at]'))) { actType = b.getAttribute('data-at'); actEnd = false; renderView(); return; }
 
   // entry
@@ -2003,7 +2146,7 @@ function rpInit() {
 function onBack() {
   if (leaving) return;
   var shut = function (id) { var m = $(id); if (m && !m.hidden) { m.hidden = true; return true; } return false; };
-  var handled = shut('leave') || shut('gdm') || shut('ni') || shut('pm') || shut('me') || shut('rp');
+  var handled = shut('leave') || shut('gdm') || shut('ei') || shut('ni') || shut('pm') || shut('me') || shut('rp');
   if (!handled && Object.keys(editing).length) { editing = {}; renderList(); handled = true; }
   if (!handled && Object.keys(partOpen).length) { partOpen = {}; renderList(); handled = true; }
   if (!handled && !$('noteBox').hidden) { $('noteBox').hidden = true; handled = true; }
@@ -2055,6 +2198,14 @@ window.onload = function () {
     $('meName').textContent = 'Logged in as ' + myName; $('me').hidden = false;
   };
   $('meOut').onclick = logOut;
+  $('meEdit').onclick = function () { $('me').hidden = true; openEditItem(); };
+  $('eiQ').oninput = paintEiList;
+  $('eiL').onclick = function (ev) { var b = ev.target.closest('[data-ei]'); if (b) loadEditItem(b.getAttribute('data-ei')); };
+  $('eiNo').onclick = function () { $('ei').hidden = true; };
+  $('eiOk').onclick = saveEditItem;
+  $('eiOdNow').onclick = function () { $('eiOd').value = istNow(); eiWarn(); };
+  $('eiOdClr').onclick = function () { $('eiOd').value = ''; eiWarn(); };
+  ['eiBag', 'eiMini', 'eiLu', 'eiOd', 'eiBn', 'eiSn'].forEach(function (id) { $(id).addEventListener('input', eiWarn); });
   $('meClose').onclick = function () { $('me').hidden = true; };
   $('lNames').onclick = function (ev) { var b = ev.target.closest('[data-ln]'); if (b) pickLogin(b.getAttribute('data-ln')); };
   $('lGo').onclick = doLogin;
